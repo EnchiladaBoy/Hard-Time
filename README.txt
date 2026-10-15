@@ -11,6 +11,8 @@ photographs, save/reload and saving on window close have been exercised.
 Normal gameplay now interpolates rendered frames independently of its original
 30 Hz simulation and targets display refresh. F11 toggles the FPS counter.
 Menus and scripted dialogue retain their original timing.
+Alarm audio is silenced in both native builds; alarm-related guard behavior
+continues to work.
 Hardware graphics, physical controllers and a full playthrough remain untested
 on Windows. The Linux port retains its earlier Fedora 44 ARM64 validation.
 
@@ -77,6 +79,7 @@ in provenance/validation.json. Windows build and test evidence is recorded
 separately in provenance/windows-validation.json.
 Refresh-rate changes and measurements are recorded separately in
 provenance/windows-refresh-validation.json.
+Current Windows artifact hashes are in provenance/windows-build.json.
 
 The historical Linux build showed about 23.6 displayed changes per second
 in a 15-second busy-hall sample at 800x600 on a four-vCPU software-rendered VM.

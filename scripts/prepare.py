@@ -16,7 +16,8 @@ DEFAULT_WORK = ROOT / ".work" / "windows" if PLATFORM == "windows-x64" else ROOT
 WORK = Path(os.environ.get("HARDTIME_WORK_DIR", DEFAULT_WORK)).expanduser().resolve()
 LOCK = json.loads((ROOT / "scripts/source-lock.json").read_text())
 PATCHES = ["engine-linux-arm64.patch", "build-dependency-sdl.patch",
-           "build-dependency-vorbis.patch", "portable-build.patch", "game-linux.patch"]
+           "build-dependency-vorbis.patch", "portable-build.patch", "game-linux.patch",
+           "game-no-alarm.patch"]
 if PLATFORM == "windows-x64":
     PATCHES += ["engine-windows-x64.patch", "game-windows.patch",
                 "engine-refresh-windows.patch", "game-refresh-windows.patch"]
@@ -104,6 +105,7 @@ def main():
         (original / name).write_bytes(data)
         (game / name).write_bytes(data)
     apply(game, ROOT / "patches/game-linux.patch")
+    apply(game, ROOT / "patches/game-no-alarm.patch")
     if PLATFORM == "windows-x64":
         apply(engine, ROOT / "patches/engine-windows-x64.patch")
         apply(game, ROOT / "patches/game-windows.patch")

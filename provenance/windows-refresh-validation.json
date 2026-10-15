@@ -284,5 +284,6 @@
     "No physical GPU or 120/144 Hz display validation",
     "Menus and scripted dialogue remain on legacy timing",
     "Interpolation adds about one simulation tick of visual delay"
-  ]
+  ],
+  "artifact_note": "Historical refresh-rate validation and artifact hashes; current Windows artifact hashes are in windows-build.json."
 }

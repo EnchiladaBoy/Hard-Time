@@ -1,0 +1,11 @@
+--- a/Values.bb
++++ b/Values.bb
+@@ -118,6 +118,8 @@
+ Global sBell=Load3DSound("Sound/World/Bell.wav")
+ Global sRing=Load3DSound("Sound/World/Ring.wav")
+ Global sAlarm=Load3DSound("Sound/World/Alarm.wav")
++; Keep the silent alarm channel for guard reactions that check ChannelPlaying.
++SoundVolume sAlarm,0
+ Global sTanoy=Load3DSound("Sound/World/Tanoy.wav")
+ Global sBasket=Load3DSound("Sound/World/Basket.wav")
+ ;movements

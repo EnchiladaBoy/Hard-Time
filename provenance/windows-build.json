@@ -1,0 +1,39 @@
+{
+  "date_utc": "2026-10-15T06:04:23.891760+00:00",
+  "change": "Alarm audio silenced through shared SoundVolume initialization; silent channel retained for guard reaction logic.",
+  "shared_game_patch": "patches/game-no-alarm.patch",
+  "shared_game_patch_sha256": "361af6fb258e058a771beba07a7781956b62d0cae72f0a8349e030ac1a016fbf",
+  "prepared_recipe_sha256": "46c405c793c54eec5b63393824949b21943b6bdc0145f8945d7c930ee475d9be",
+  "artifacts": {
+    "directory": "dist/Hard-Time-Windows-x64",
+    "executable_sha256": "0ccaced6955e05552966de03e8a7c7872a7cbe4bd07a6051fb6f09139b9f5dee",
+    "executable_bytes": 4001792,
+    "zip": "dist/Hard-Time-Windows-x64.zip",
+    "zip_sha256": "22affe992d13a61019b4eb1ecb61eca05f9266754a4d19025cfc1df00872e5bd",
+    "zip_bytes": 46591775,
+    "zip_crc_check": true
+  },
+  "validation": {
+    "linux_arm64": "All 18 hash-pinned sources reconstructed and shared patch applied; native Linux binary was not built on this Windows host.",
+    "windows_x64": "All 18 sources reconstructed, compared against prepared tree, compiled, launched and closed with exit status 0.",
+    "audio": "OpenAL sample gain initialization inspected; no physical audio listening test.",
+    "installations_updated": [
+      {
+        "directory": "dist/Hard-Time-Windows-x64",
+        "preserved_files": 6,
+        "executable_sha256": "0ccaced6955e05552966de03e8a7c7872a7cbe4bd07a6051fb6f09139b9f5dee"
+      },
+      {
+        "directory": ".work/playtest",
+        "preserved_files": 196,
+        "executable_sha256": "0ccaced6955e05552966de03e8a7c7872a7cbe4bd07a6051fb6f09139b9f5dee"
+      },
+      {
+        "directory": ".work/fps-playtest",
+        "preserved_files": 177,
+        "executable_sha256": "0ccaced6955e05552966de03e8a7c7872a7cbe4bd07a6051fb6f09139b9f5dee"
+      }
+    ]
+  },
+  "prior_runtime_validation": "windows-refresh-validation.json"
+}

@@ -74,3 +74,9 @@ GitHub packaging
   and actual-game GUI checks are local validation, not the hosted CI fixture test.
   Releases are unsigned. See NOTICE.txt for the original game's conditions and
   licenses/ for the runtime components' notices and source links.
+
+Known game limitation
+  Repeated F12 screenshots can darken menu graphics on the tested Mesa software
+  renderer. Restart the game to restore them; use Windows screen capture until
+  this is fixed. This was reproduced with the public setup-v0.1.1-preview game.
+  Hardware drivers have not been checked. See provenance/windows-setup-validation.json.

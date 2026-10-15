@@ -37,7 +37,8 @@
     "gui_play_button_starts_compiled_launcher_and_game": true,
     "launcher_created_save_backup": true,
     "installed_game_menu_visually_checked": true,
-    "installed_game_launch_and_screenshot_in_non_ascii_directory": true,
+    "installed_game_launch_in_non_ascii_directory": true,
+    "first_screenshot_saved_in_non_ascii_directory": true,
     "game_close_exit_code": 0
   },
   "dependency_audit": {
@@ -58,7 +59,22 @@
     "checksum_verified_after_public_download": true,
     "downloaded_setup_gui_installed_and_launched_game_in_unicode_directory": true
   },
+  "known_game_issue": {
+    "status": "unresolved",
+    "summary": "Repeated F12 screenshots can darken menu graphics until restart.",
+    "reproduced_with": "Public setup-v0.1.1-preview game, Windows 11 x64, bundled Mesa llvmpipe, Unicode installation path",
+    "steps": [
+      "Launch the installed game and wait at the main menu.",
+      "Press and release F12, wait, then press and release it again.",
+      "The title, button graphics and text can turn black in both the game window and subsequent screenshots."
+    ],
+    "workaround": "Restart the game and use Windows screen capture instead of F12.",
+    "hardware_driver_status": "Not checked",
+    "regression_gap": "The repeated-capture runtime test checks colored rectangle pixels but does not validate menu images and text after capture.",
+    "prototype_changes_shipped": false
+  },
   "limits": [
+    "The known F12 rendering issue above remains unresolved; passing installer checks and runtime regressions do not imply a full game playthrough passed.",
     "Local artifact record; release builds have their own attached checksum and payload manifest.",
     "Windows 10 and hardware OpenGL drivers were not exercised on this host.",
     "The graphics probe checks the system driver in an isolated process; it does not guarantee performance or all driver behavior.",

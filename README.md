@@ -71,6 +71,8 @@ Find the new options under **Options → Modern Settings** and **Options → Red
 
 This is an unsigned preview. The release includes a SHA256 checksum and payload manifest. Original game assets are fetched from MDickie or copied from your local game; they are not included in the setup download.
 
+**Known game issue:** Repeated F12 screenshots can darken menu graphics on the tested software renderer. Restart the game to restore them; use Windows screen capture until this is fixed. See the [validation record](provenance/windows-setup-validation.json) for test coverage and limitations.
+
 <details>
 <summary><strong>Build from source or package the installer yourself</strong></summary>
 

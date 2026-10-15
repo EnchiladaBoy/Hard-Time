@@ -75,3 +75,8 @@ backups folders elsewhere, then delete the installation folder and shortcuts.
 This is an unofficial compatibility port of Mat Dickie's original game.
 The name, credits and noncommercial conditions are retained; see NOTICE.txt.
 Full playthroughs and physical controller testing remain outstanding.
+
+Known preview issue: repeated F12 screenshots can darken menu graphics on the
+tested Mesa software renderer. Restart the game to restore them. Use Windows
+screen capture instead of F12 until this issue is fixed. Hardware graphics
+drivers have not been checked for this issue.

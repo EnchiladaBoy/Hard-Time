@@ -11,6 +11,25 @@ try {
 }
 try {
     $dataPath = Join-Path $gameRoot 'Data'
+    # Recover the small directory-switch gap before the launcher's backup step.
+    if (-not (Test-Path -LiteralPath $dataPath)) {
+        $previousDataPath = Join-Path $gameRoot 'Data.previous'
+        $transactionPath = Join-Path $gameRoot 'Data.transaction'
+        if (Test-Path -LiteralPath $transactionPath) {
+            $transaction = [System.IO.File]::ReadAllLines($transactionPath)
+            if ($transaction.Length -ne 2 -or $transaction[0] -cne 'Hard Time save transaction v2' -or
+                $transaction[1] -cne 'Data') {
+                throw 'The save recovery marker does not match this installation.'
+            }
+            $previousData = Get-Item -LiteralPath $previousDataPath
+            if (-not $previousData.PSIsContainer -or
+                ($previousData.Attributes -band [System.IO.FileAttributes]::ReparsePoint)) {
+                throw 'A private previous save directory is required for recovery.'
+            }
+            # Both absolute paths are fixed siblings under this installation.
+            Move-Item -LiteralPath $previousDataPath -Destination $dataPath
+        }
+    }
     $dataItem = Get-Item -LiteralPath $dataPath
     if (-not $dataItem.PSIsContainer -or
         ($dataItem.Attributes -band [System.IO.FileAttributes]::ReparsePoint)) {

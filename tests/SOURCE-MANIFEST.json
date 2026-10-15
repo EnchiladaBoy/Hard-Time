@@ -14,6 +14,12 @@
     "sources/window-close-smoke.bb": "0e16545a0d6e87ffff9d6f3a18f8d813c537fc05fa37ed218a3f034944939e50",
     "sources/capture-repeat-smoke.bb": "e558ac77d043d89c372890eb05f197d2338f0ba15d3940c7beaa8ffc73ca71f0",
     "sources/timer-poll-smoke.bb": "4b4e579c01dc33845e33c763088e36a26cf182dbeab3e449e512c105d59204ee",
-    "sources/interpolation-smoke.bb": "e16f8ecba91bde5c4c90b0b4f808d546b06180cf36c75bac350f0a45d97c3e36"
+    "sources/interpolation-smoke.bb": "e16f8ecba91bde5c4c90b0b4f808d546b06180cf36c75bac350f0a45d97c3e36",
+    "sources/overlay-smoke.bb": "60cb67e6f7fc09c3f75a9156c6db87d74a2de3ce41b32d7c1f051f4f11e59954",
+    "sources/audio-groups-smoke.bb": "0430468745d81879151a6e69535a1c8f47f3d70b1c3a230d45962295c590a3fc",
+    "sources/save-transaction-smoke.bb": "bf4e3aaec546eff673182383a1904cfe48ddafb65fd13a74b385053a1572a7e4",
+    "sources/preferences-smoke.bb": "593af988f089279a8a714406229e1f74c295e4899ddecacbc19e0a48404baff3",
+    "sources/display-lifecycle-smoke.bb": "efe70b3fa91319c6502429e55f55e7ad53da2ccdfd2e67d5c1c54ab3520bfc3d",
+    "sources/controller-reconnect.cpp": "14c1d29fc8d6f5645f67f0f118c1b9c43b5fd9c87f72fa4949f85c5c994a1bf6"
   }
 }

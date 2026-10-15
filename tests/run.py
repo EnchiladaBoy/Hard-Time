@@ -26,7 +26,9 @@ CORE = ["boolean-smoke", "rounding-smoke", "semantics"]
 GRAPHICS = ["runtime-smoke", "graphics-smoke", "material-smoke"]
 FONTS = ["font-smoke", "hud-fit-smoke"]
 WINDOWS_GRAPHICS = ["texture-alpha-smoke", "window-close-smoke", "capture-repeat-smoke",
-                    "timer-poll-smoke", "interpolation-smoke"]
+                    "timer-poll-smoke", "interpolation-smoke", "overlay-smoke",
+                    "audio-groups-smoke", "save-transaction-smoke", "preferences-smoke",
+                    "display-lifecycle-smoke"]
 RESULT_FILES = {
     "semantics": "semantics-results.txt",
     "graphics-postflip-smoke": "graphics-smoke-result.txt",
@@ -161,6 +163,62 @@ def run_close_test(binary, work, env, log, timeout):
                 child.wait()
 
 
+def run_save_test(binary, work, env, log, timeout):
+    """Exercise process boundaries and a Windows sharing violation on disposable data."""
+    import ctypes
+    from ctypes import wintypes
+
+    def phase(name, success=True, directory=None):
+        result = subprocess.run([str(binary)], cwd=directory or work, env={**env, "HARDTIME_SAVE_TEST": name},
+                                stdout=log, stderr=subprocess.STDOUT, timeout=timeout)
+        require((result.returncode == 0) == success, f"Save phase {name}: exit {result.returncode}")
+
+    def value(path):
+        return struct.unpack("<i", path.read_bytes())[0]
+
+    phase("initial")
+    phase("unfinished-file")
+    require(value(work / "Data/value.dat") == 42, "Unclosed atomic file committed")
+    phase("unfinished-save")
+    require(value(work / "Data/value.dat") == 42, "Staged write modified the live save")
+    require(value(work / "Data.saving/value.dat") == 999, "Case-insensitive save redirection failed")
+    require(bmp_pixel(work / "Data/photo.bmp", 16, 16, 0, 0) == (255, 0, 0),
+            "Staged photo modified the live save")
+    require(bmp_pixel(work / "Data.saving/photo.bmp", 16, 16, 0, 0) == (0, 255, 0),
+            "SaveImage did not use the staged directory")
+    phase("commit")
+    require(value(work / "Data/value.dat") == value(work / "Data/options.dat") == 84,
+            "Save files were not committed together")
+    require(value(work / "Data.previous/value.dat") == 42, "Previous save not retained")
+    require(bmp_pixel(work / "Data/photo.bmp", 16, 16, 0, 0) == (0, 255, 0),
+            "Save photo was not committed with progress")
+    # Emulate interruption in the directory-switch gap; every path is inside this test's folder.
+    (work / "Data.previous").rename(work / "previous-test-generation")
+    (work / "Data").rename(work / "Data.previous")
+    phase("recover-gap")
+    require(value(work / "Data/value.dat") == 84, "Directory gap recovery failed")
+    moved = work / "relocated"
+    moved.mkdir()
+    for name in ("Data", "Data.transaction"):
+        (work / name).rename(moved / name)
+    phase("recover-gap", directory=moved)
+    require(value(moved / "Data/value.dat") == 84, "Relocated save recovery failed")
+    for name in ("Data", "Data.transaction"):
+        (moved / name).rename(work / name)
+    kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel.CreateFileW.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
+                                  wintypes.LPVOID, wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE]
+    kernel.CreateFileW.restype = wintypes.HANDLE
+    kernel.CloseHandle.argtypes = [wintypes.HANDLE]
+    handle = kernel.CreateFileW(str(work / "Data/value.dat"), 0x80000000, 1, None, 3, 0, None)
+    require(handle != ctypes.c_void_p(-1).value, "Cannot lock save fixture")
+    try:
+        phase("locked-target", success=False)
+        require(value(work / "Data/value.dat") == 84, "Failed atomic replacement damaged save")
+    finally:
+        kernel.CloseHandle(handle)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--blitzpath", help="Release directory containing bin/blitzcc and ARM64 runtime")
@@ -226,9 +284,21 @@ def main() -> int:
                     png = b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">2I5B", 8, 8, 8, 6, 0, 0, 0))
                     png += chunk(b"IDAT", zlib.compress((b"\0" + bytes((255, 255, 255, 64)) * 8) * 8)) + chunk(b"IEND", b"")
                     (work / "alpha-rgba.png").write_bytes(png)
+                if name == "audio-groups-smoke":
+                    import math
+                    import wave
+                    with wave.open(str(work / "tone.wav"), "wb") as audio:
+                        audio.setparams((1, 2, 22050, 22050, "NONE", "not compressed"))
+                        audio.writeframes(b"".join(struct.pack("<h", int(4000 * math.sin(n * math.tau * 440 / 22050)))
+                                                   for n in range(22050)))
+                if name == "preferences-smoke":
+                    shutil.copy2(release.parent / "game/NativePreferences.bb", work / "NativePreferences.bb")
                 for dll, filename in dlls:
                     shutil.copy2(dll, work / filename)
                 source = HERE / "sources" / (name + ".bb")
+                if name == "preferences-smoke":
+                    shutil.copy2(source, work / source.name)
+                    source = work / source.name
                 if WINDOWS and name in FONTS:
                     # The assertions are unchanged; exercise the game's Windows font families.
                     text = source.read_text()
@@ -250,6 +320,8 @@ def main() -> int:
                     if name == "window-close-smoke":
                         require(WINDOWS, "Window close test requires Windows")
                         run_close_test(binary, work, env, log, args.timeout)
+                    elif name == "save-transaction-smoke":
+                        run_save_test(binary, work, env, log, args.timeout)
                     else:
                         subprocess.run([str(binary)], cwd=work, env=env, stdout=log, stderr=subprocess.STDOUT, check=True, timeout=args.timeout)
                 validate_result(name, work)

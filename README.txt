@@ -10,7 +10,11 @@ Menus, character creation, courtroom introduction, gameplay, movement,
 photographs, save/reload and saving on window close have been exercised.
 Normal gameplay now interpolates rendered frames independently of its original
 30 Hz simulation and targets display refresh. F11 toggles the FPS counter.
-Menus and scripted dialogue retain their original timing.
+Menus and scripted dialogue render between simulation ticks while retaining
+their original timing. Modern Settings adds desktop/borderless display modes,
+HUD size, camera controls, focus-loss pause and separate audio levels. Movement,
+actions and pause can be rebound, including a WASD preset. Save updates retain
+a previous complete generation and recover interrupted writes or damaged settings.
 Alarm audio is silenced in both native builds; alarm-related guard behavior
 continues to work.
 Hardware graphics, physical controllers and a full playthrough remain untested
@@ -79,6 +83,8 @@ in provenance/validation.json. Windows build and test evidence is recorded
 separately in provenance/windows-validation.json.
 Refresh-rate changes and measurements are recorded separately in
 provenance/windows-refresh-validation.json.
+Modern settings, save recovery and rendering checks are recorded in
+provenance/windows-improvements-validation.json.
 Current Windows artifact hashes are in provenance/windows-build.json.
 
 The historical Linux build showed about 23.6 displayed changes per second

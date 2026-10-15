@@ -40,6 +40,22 @@ def private_directory(path):
         raise ValueError(f'A directory is required: {path}')
 
 
+def recover_data_directory(destination):
+    """An update must not seed fresh data over an interrupted save switch."""
+    data = destination / 'Data'
+    marker = destination / 'Data.transaction'
+    if data.exists() or not marker.exists():
+        return
+    lines = marker.read_text(encoding='utf-8').splitlines()
+    if lines != ['Hard Time save transaction v2', 'Data']:
+        raise ValueError('The save recovery marker does not match this installation.')
+    previous = destination / 'Data.previous'
+    private_directory(previous)
+    if not previous.is_dir():
+        raise ValueError('Previous save directory is missing; refusing to overwrite recovery data.')
+    previous.rename(data)
+
+
 def verify_pe64(binary):
     data = binary.read_bytes()
     if len(data) < 64 or data[:2] != b'MZ':
@@ -89,6 +105,7 @@ def install(binary, assets, destination, runtime_files, software=False):
         private_directory(destination / name)
     destination.mkdir(parents=True, exist_ok=True)
     with install_lock(destination):
+        recover_data_directory(destination)
         for name in (*ASSETS, 'Data'):
             if not (destination / name).exists():
                 shutil.copytree(assets / name, destination / name)

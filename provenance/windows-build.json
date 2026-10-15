@@ -1,39 +1,47 @@
 {
-  "date_utc": "2026-10-15T06:04:23.891760+00:00",
-  "change": "Alarm audio silenced through shared SoundVolume initialization; silent channel retained for guard reaction logic.",
+  "date_utc": "2026-10-15T08:21:18.139411+00:00",
+  "change": "Modern Windows settings, remappable controls, focus pause, independent audio, crash-resistant grouped saves and renderer resource/overlay improvements. Alarm remains silent.",
+  "prepared_recipe_sha256": "1a3948a20d91dcfb8eeed2dbd342004b785df59cfeaa73cc7cd407944bafdb28",
+  "patches": {
+    "engine-modern-windows.patch": "b36dd378a7eb4938ee3236f1b3207337ed8b3bd4f27b8eadb409d373e8ba7fb0",
+    "game-modern-windows.patch": "ad3d8355cb2f29834e77ba8ec9c5db7a0230fb65bca25854e75158161415ffeb",
+    "game-no-alarm.patch": "361af6fb258e058a771beba07a7781956b62d0cae72f0a8349e030ac1a016fbf"
+  },
   "shared_game_patch": "patches/game-no-alarm.patch",
-  "shared_game_patch_sha256": "361af6fb258e058a771beba07a7781956b62d0cae72f0a8349e030ac1a016fbf",
-  "prepared_recipe_sha256": "46c405c793c54eec5b63393824949b21943b6bdc0145f8945d7c930ee475d9be",
   "artifacts": {
     "directory": "dist/Hard-Time-Windows-x64",
-    "executable_sha256": "0ccaced6955e05552966de03e8a7c7872a7cbe4bd07a6051fb6f09139b9f5dee",
-    "executable_bytes": 4001792,
+    "executable_sha256": "9c7720bc1453189c0b2e0f19ac2fbaa94e5fdf1a421bea7cba2f79f85ea06a9d",
+    "executable_bytes": 4156416,
     "zip": "dist/Hard-Time-Windows-x64.zip",
-    "zip_sha256": "22affe992d13a61019b4eb1ecb61eca05f9266754a4d19025cfc1df00872e5bd",
-    "zip_bytes": 46591775,
+    "zip_sha256": "11627cd8fbdac48472d95ed75bd5debd296a1abd2a88ca5400ade582f82baeb0",
+    "zip_bytes": 46661804,
     "zip_crc_check": true
   },
   "validation": {
-    "linux_arm64": "All 18 hash-pinned sources reconstructed and shared patch applied; native Linux binary was not built on this Windows host.",
-    "windows_x64": "All 18 sources reconstructed, compared against prepared tree, compiled, launched and closed with exit status 0.",
-    "audio": "OpenAL sample gain initialization inspected; no physical audio listening test.",
+    "record": "windows-improvements-validation.json",
+    "runtime_regressions_passed": 19,
+    "installer_checks_passed": 8,
+    "virtual_controller_check_passed": true,
+    "zip_crc_check": true,
+    "zip_launcher_and_relocated_recovery_passed": true,
     "installations_updated": [
       {
         "directory": "dist/Hard-Time-Windows-x64",
         "preserved_files": 6,
-        "executable_sha256": "0ccaced6955e05552966de03e8a7c7872a7cbe4bd07a6051fb6f09139b9f5dee"
+        "executable_sha256": "9c7720bc1453189c0b2e0f19ac2fbaa94e5fdf1a421bea7cba2f79f85ea06a9d"
       },
       {
         "directory": ".work/playtest",
         "preserved_files": 196,
-        "executable_sha256": "0ccaced6955e05552966de03e8a7c7872a7cbe4bd07a6051fb6f09139b9f5dee"
+        "executable_sha256": "9c7720bc1453189c0b2e0f19ac2fbaa94e5fdf1a421bea7cba2f79f85ea06a9d"
       },
       {
         "directory": ".work/fps-playtest",
         "preserved_files": 177,
-        "executable_sha256": "0ccaced6955e05552966de03e8a7c7872a7cbe4bd07a6051fb6f09139b9f5dee"
+        "executable_sha256": "9c7720bc1453189c0b2e0f19ac2fbaa94e5fdf1a421bea7cba2f79f85ea06a9d"
       }
     ]
   },
-  "prior_runtime_validation": "windows-refresh-validation.json"
+  "prior_runtime_validation": "windows-refresh-validation.json",
+  "prior_alarm_build_commit": "fef7199bbff2e747443afde1ecf7b48404b08ae6"
 }

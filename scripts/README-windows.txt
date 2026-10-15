@@ -41,7 +41,8 @@ Required original directories: Characters, Graphics, Sound, Weapons, World,
 and Data. The original executable is not used to run the native game.
 
 The default destination is dist/Hard-Time-Windows-x64. Installation copies
-the original assets and save files only when absent. Reinstallation updates
+the original assets and save files only when absent. Reinstallation recovers
+an interrupted Data-directory switch before checking for missing files. It updates
 the native executable, launcher and runtime DLLs without replacing existing
 Data or Photo Album contents. Unrelated directories, overlapping original
 paths and updates while this launcher's game is running are refused.
@@ -63,28 +64,60 @@ Play and saves
   Do not put the installation in a protected directory such as Program Files.
   Esc saves active gameplay to the slot menu; closing the window also saves.
   Save-slot labels are persisted with progress instead of only at Quit.
+  Grouped saves are written into Data.saving, flushed, then switched into
+  place. Data.previous holds the preceding committed generation. A marker
+  identifies owned recovery folders; unknown recovery folders are preserved
+  and reported rather than overwritten. The launcher and installer recover
+  a missing Data folder from Data.previous before making backups or updating.
+  Recovery markers remain valid when the installation folder is moved.
+  Atomic option writes retain .bak copies. Settings are size/range checked
+  before loading; damaged copies are kept for diagnosis. NativeOptions.dat
+  adds modern preferences without extending the legacy binary Options format.
+  Resetting an occupied slot requires an explicit confirmation.
   F12 creates a BMP in Photo Album. The original manual is copied when present.
   Read Me.txt in the installation explains restoring a backup.
 
 Display refresh and diagnostics
-  Normal gameplay uses interpolated rendering with a fixed 30 Hz simulation.
+  Gameplay and scripted scenes use interpolated rendering with a fixed 30 Hz
+  simulation. Menus and dialogue replay recorded UI drawing between ticks;
+  scripted UI functions and gameplay RNG are only evaluated on logic frames.
   Presentation follows driver vsync. If the driver rejects vsync, a monotonic
   limiter uses the window's display refresh rate, falling back to 60 Hz when
   the display does not report a rate. This removes the gameplay render cap;
-  actual FPS still depends on the scene and graphics driver. Menus, loading,
-  pause and scripted dialogue retain their original timing.
+  actual FPS still depends on the scene and graphics driver. Loading feedback
+  updates as assets become ready. Returning from a modal confirmation discards
+  that modal's elapsed UI time; ordinary render load retains timer catch-up.
   F11 toggles the rendered-FPS/simulation-Hz counter during gameplay.
   Optional environment variables, set before launching:
     HARDTIME_SHOW_FPS=1       show the counter immediately
     HARDTIME_ORIGINAL_FPS=1   use the original blocking 30 Hz rendering
     HARDTIME_FPS_LOG=1        write frame-times.csv in the installation
-  The CSV contains two-second aggregates, including loading and pause. It is
+  The CSV contains approximately two-second aggregates, including loading and
+  pause, with update/render/UI/presentation milliseconds for profiling. It is
   overwritten when entering gameplay; copy it elsewhere before another run.
   Diagnostic settings do not change the save-file format.
+
+Modern settings
+  Options > Modern Settings offers desktop/native, 1080p, 1440p and 4K sizes,
+  borderless desktop mode, HUD scaling, camera sensitivity/distance, focus-loss
+  pause and independent music/effects/ambience gains. Display changes keep the
+  GL context and loaded assets alive and have a 15-second confirmation timeout.
+  Options > Redefine Keys includes movement, actions, pause and a WASD preset.
+  Duplicate bindings swap rather than assigning one key to two actions.
+  The SDL input driver discovers hotplug events and clears disconnected input.
+  The alarm's zero base gain is preserved across all category-volume changes.
+
+Renderer maintenance
+  Mesh buffers/arrays, scene resources, light representations, cached font
+  textures and text geometry are released while the owning GL context exists.
+  Index buffers upload only when triangle data changes. Text geometry uses a
+  bounded cache (256 strings), invalidated when the font atlas changes.
+  Recorded UI commands are invalidated when a referenced resource is freed.
 
 Regression checks (after building):
   python tests/run.py --all --post-flip --software-renderer
   python -m unittest discover -s tests -p test_windows_install.py -v
+  python tests/test_controller_windows.py
 
 The regression runner creates isolated temporary files and uses silent OpenAL.
 It does not modify live saves or prove audible output. See tests/TESTS.txt.

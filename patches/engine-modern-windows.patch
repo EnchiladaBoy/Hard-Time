@@ -1,0 +1,1351 @@
+--- a/src/modules/bb/audio.openal/audio.openal.cpp
++++ b/src/modules/bb/audio.openal/audio.openal.cpp
+@@ -22,15 +22,18 @@
+     ALuint buffer=0;
+     int frequency=0, channels=0;
+     float duration=0;
++    int group=0;
+     ~OpenALSample(){ if(buffer) alDeleteBuffers(1,&buffer); }
+ };
+ static float audioRolloff=1, audioDistance=1;
+ static bool audioPaused=false;
++static float groupVolumes[3]={1,1,1};
+ static float clampVolume(float v){ return std::max(0.0f,std::min(1.0f,v)); }
+ 
+ class OpenALChannel : public BBChannel {
+ public:
+     ALuint source=0;
++    float volume=1;
+     std::shared_ptr<OpenALSample> sample;
+     bool paused=false, masterPaused=false, spatial=false;
+     float position[3]={0,0,0}, velocity[3]={0,0,0};
+@@ -66,7 +69,8 @@
+         else if(!paused && state==AL_PAUSED) alSourcePlay(source);
+     }
+     void setPitch(int hertz){ if(source&&sample) alSourcef(source,AL_PITCH,std::max(1,hertz)/(float)sample->frequency); }
+-    void setVolume(float volume){ if(source) alSourcef(source,AL_GAIN,clampVolume(volume)); }
++    void applyVolume(){ if(source && sample) alSourcef(source,AL_GAIN,volume*groupVolumes[sample->group]); }
++    void setVolume(float value){ volume=clampVolume(value);applyVolume(); }
+     void setPan(float pan){
+         if(!source||spatial) return;
+         pan=std::max(-1.0f,std::min(1.0f,pan));
+@@ -92,6 +96,7 @@
+         ALint state; alGetSourcei(source,AL_SOURCE_STATE,&state);
+         return state==AL_PLAYING||state==AL_PAUSED;
+     }
++    float getGain(){ ALfloat gain=0;if(source) alGetSourcef(source,AL_GAIN,&gain);return gain; }
+     float getDuration(){ return sample?sample->duration:0; }
+     float getPosition(){
+         if(!source) return 0;
+@@ -126,6 +131,7 @@
+     }
+     BBChannel *play(){ return playSample(sample,false,loop,pitch,volume,pan); }
+     BBChannel *play3d(const float pos[3],const float vel[3]){ return playSample(sample,true,loop,pitch,volume,pan,pos,vel); }
++    void setGroup(int group){ sample->group=group;for(auto c:channels) if(c->sample==sample) c->applyVolume(); }
+     void setLoop(bool value){ loop=value; }
+     void setPitch(int hertz){ pitch=std::max(1,hertz); }
+     void setVolume(float value){ volume=clampVolume(value); }
+@@ -192,6 +198,7 @@
+         dev=alcOpenDevice(NULL); if(!dev) return false;
+         ctx=alcCreateContext(dev,NULL); if(!ctx||!alcMakeContextCurrent(ctx)) return false;
+         audioPaused=false; audioRolloff=audioDistance=1;
++        for(float &volume:groupVolumes) volume=1;
+         alDistanceModel(AL_INVERSE_DISTANCE_CLAMPED);
+         return true;
+     }
+@@ -200,6 +207,7 @@
+         auto sound=new OpenALSound(sample); sound_set.insert(sound); return sound;
+     }
+     void setPaused(bool paused){ audioPaused=paused; for(auto c:channels) c->setMasterPaused(paused); }
++    void setGroupVolume(int group,float volume){ groupVolumes[group]=clampVolume(volume);for(auto c:channels) c->applyVolume(); }
+     void setVolume(float volume){ alListenerf(AL_GAIN,clampVolume(volume)); }
+     void set3dOptions(float roll,float dopp,float dist){
+         audioRolloff=std::max(0.0f,roll); audioDistance=std::max(0.000001f,dist);
+--- a/src/modules/bb/audio/audio.cpp
++++ b/src/modules/bb/audio/audio.cpp
+@@ -137,3 +137,8 @@
+ 	}
+ 	return true;
+ }
++
++void BBCALL bbSoundGroup(BBSound *sound,bb_int_t group){ if(sound && group>=0 && group<3) sound->setGroup(group); }
++void BBCALL bbAudioGroupVolume(bb_int_t group,bb_float_t volume){ if(gx_audio && group>=0 && group<3) gx_audio->setGroupVolume(group,volume); }
++
++bb_float_t BBCALL bbChannelGain(BBChannel *channel){ return channel?channel->getGain():0; }
+--- a/src/modules/bb/audio/channel.h
++++ b/src/modules/bb/audio/channel.h
+@@ -18,6 +18,7 @@
+ 	virtual bool isPlaying()=0;
+ 	virtual float getDuration()=0;
+ 	virtual float getPosition()=0;
++	virtual float getGain(){ return 0; }
+ };
+ 
+ #endif
+--- a/src/modules/bb/audio/commands.decls
++++ b/src/modules/bb/audio/commands.decls
+@@ -17,3 +17,8 @@
+ ChannelPlaying%( channel.BBChannel ):"bbChannelPlaying"
+ ChannelDuration#( channel.BBChannel ):"bbChannelDuration"
+ ChannelPosition#( channel.BBChannel ):"bbChannelPosition"
++
++SoundGroup(sound.BBSound,group%):"bbSoundGroup"
++AudioGroupVolume(group%,volume#):"bbAudioGroupVolume"
++
++ChannelGain#(channel.BBChannel):"bbChannelGain"
+--- a/src/modules/bb/audio/driver.h
++++ b/src/modules/bb/audio/driver.h
+@@ -25,6 +25,7 @@
+   void freeSound( BBSound *sound );
+ 
+   virtual void setPaused( bool paused )=0;	//master pause
++  virtual void setGroupVolume(int group,float volume){}
+   virtual void setVolume( float volume )=0;	//master volume
+ 
+   virtual void set3dOptions( float roll,float dopp,float dist )=0;
+--- a/src/modules/bb/audio/sound.h
++++ b/src/modules/bb/audio/sound.h
+@@ -14,6 +14,7 @@
+   virtual BBChannel *play3d( const float pos[3],const float vel[3] )=0;
+ 
+   //modifiers
++  virtual void setGroup(int group){}
+   virtual void setLoop( bool loop )=0;
+   virtual void setPitch( int hertz )=0;
+   virtual void setVolume( float volume )=0;
+--- a/src/modules/bb/blitz3d.gl/blitz3d.gl.cpp
++++ b/src/modules/bb/blitz3d.gl/blitz3d.gl.cpp
+@@ -64,6 +64,7 @@
+ 
+ 	unsigned int vertex_array=0;
+ 	unsigned int vertex_buffer=0,index_buffer=0;
++	bool indicesDirty=true;
+ 
+ 	GLMesh( int mv,int mt,int f ):max_verts(mv),max_tris(mt),flags(f){
+ 		GL( glGenVertexArrays( 1,&vertex_array ) );
+@@ -91,6 +92,9 @@
+ 	}
+ 
+ 	~GLMesh(){
++		glDeleteBuffers(1,&index_buffer);
++		glDeleteBuffers(1,&vertex_buffer);
++		glDeleteVertexArrays(1,&vertex_array);
+ 		delete[] verts;
+ 		delete[] tris;
+ 	}
+@@ -98,22 +102,26 @@
+ 	bool lock( bool all ){
+ 		// TODO: this should probably come from a pool
+ 		if( !verts ) verts=new GLVertex[max_verts];
+-		if( !tris ) tris=new unsigned int[max_tris*3];
++		if( !tris ) tris=new unsigned int[max_tris*3]();
+ 
+ 		return true;
+ 	}
+ 
+ 	void unlock(){
++		// Index data changes with the mesh, never with its draw offset.
++		if(indicesDirty){
++		GL( glBindVertexArray(vertex_array) );
++		GL( glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,index_buffer) );
++		GL( glBufferData(GL_ELEMENT_ARRAY_BUFFER,max_tris*3*sizeof(unsigned int),tris,GL_STATIC_DRAW) );
++		GL( glBindVertexArray(0) );
++		indicesDirty=false;
++		}
+ #ifndef GLES
+ 		GL( glBindBuffer( GL_ARRAY_BUFFER,vertex_buffer ) );
+ 		GL( glBufferData( GL_ARRAY_BUFFER,max_verts*sizeof(GLVertex),verts,GL_STATIC_DRAW ) );
+ #endif
+ 	}
+ 
+-	void offsetIndices( int offset ){
+-		GL( glBindBuffer( GL_ELEMENT_ARRAY_BUFFER,index_buffer ) );
+-		GL( glBufferData( GL_ELEMENT_ARRAY_BUFFER,(max_tris-offset)*3*sizeof(unsigned int),tris+offset*3,GL_STATIC_DRAW ) );
+-	}
+ 
+ 	void offsetArrays( int offset ){
+ 		GL( glBindBuffer( GL_ARRAY_BUFFER,vertex_buffer ) );
+@@ -140,6 +148,7 @@
+ 	}
+ 
+ 	void setTriangle( int n,int v0,int v1,int v2 ){
++		if(tris[n*3]!=v2 || tris[n*3+1]!=v1 || tris[n*3+2]!=v0) indicesDirty=true;
+ 		tris[n*3+0]=v2;
+ 		tris[n*3+1]=v1;
+ 		tris[n*3+2]=v0;
+@@ -181,7 +190,7 @@
+ 	int context_width,context_height;
+ 	bool wireframe;
+ 	UniformState us={ 0 };
+-	GLuint defaultProgram=0;
++	GLuint defaultProgram=0,lightBuffer=0,renderBuffer=0;
+ 	int viewport[4];
+ 
+ 	std::vector<GLLight*> lights;
+@@ -228,7 +237,7 @@
+ 			}
+ 		}
+ 
+-		static unsigned int ubo=0;
++		unsigned int &ubo=lightBuffer;
+ 		if( ubo==0 ){
+ 			GL( glGenBuffers( 1,&ubo ) );
+ 			GL( glBindBuffer( GL_UNIFORM_BUFFER,ubo ) );
+@@ -247,6 +256,12 @@
+ 
+ 		const float MIDLEVEL[]={ 0.5f,0.5f,0.5f,1.0f };
+ 		setAmbient( MIDLEVEL );
++	}
++
++	~GLScene(){
++		glDeleteBuffers(1,&lightBuffer);
++		glDeleteBuffers(1,&renderBuffer);
++		if(defaultProgram) glDeleteProgram(defaultProgram);
+ 	}
+ 
+ 	int  hwTexUnits(){ return MAX_TEXTURES; }
+@@ -548,7 +563,7 @@
+ 			break;
+ 		}
+ 
+-		static unsigned int ubo=0;
++		unsigned int &ubo=renderBuffer;
+ 		if( ubo==0 ){
+ 			GL( glGenBuffers( 1,&ubo ) );
+ 			GL( glBindBuffer( GL_UNIFORM_BUFFER,ubo ) );
+@@ -628,15 +643,12 @@
+ 	void render( BBMesh *m,int first_vert,int vert_cnt,int first_tri,int tri_cnt ){
+ 		GLMesh *mesh=(GLMesh*)m;
+ 
+-		// TODO: there's probably more performance to be found here...
+-		mesh->offsetIndices( first_tri );
+-
+ 		GL( glBindVertexArray( mesh->vertex_array ) );
+ #ifdef GLES
+ 		mesh->offsetArrays( first_vert );
+-		GL( glDrawElements( GL_TRIANGLES,tri_cnt*3,GL_UNSIGNED_INT,0 ) );
++		GL( glDrawElements( GL_TRIANGLES,tri_cnt*3,GL_UNSIGNED_INT,(void*)(size_t(first_tri)*3*sizeof(unsigned int)) ) );
+ #else
+-		GL( glDrawElementsBaseVertex( GL_TRIANGLES,tri_cnt*3,GL_UNSIGNED_INT,0,first_vert ) );
++		GL( glDrawElementsBaseVertex( GL_TRIANGLES,tri_cnt*3,GL_UNSIGNED_INT,(void*)(size_t(first_tri)*3*sizeof(unsigned int)),first_vert ) );
+ #endif
+ 		GL( glBindVertexArray( 0 ) );
+ 	}
+@@ -656,7 +668,7 @@
+ 	BBLightRep *createLight( int flags ){
+ 		return d_new GLLight();
+ 	}
+-	void freeLight( BBLightRep *l ){}
++	void freeLight( BBLightRep *l ){ delete static_cast<GLLight*>(l); }
+ 
+ 	//meshes
+ 	BBMesh *createMesh( int max_verts,int max_tris,int flags ){
+--- a/src/modules/bb/blitz3d/blitz3d.cpp
++++ b/src/modules/bb/blitz3d/blitz3d.cpp
+@@ -1999,7 +1999,8 @@
+ 	bbClearWorld( 1,1,1 );
+ 	Texture::clearFilters();
+ 	loader_mat_map.clear();
+-	delete world;
++	delete world;world=0;
++	bbSceneDriver->freeScene(bbScene);
+ 	bbScene=0;
+ }
+ 
+--- a/src/modules/bb/filesystem/CMakeLists.txt
++++ b/src/modules/bb/filesystem/CMakeLists.txt
+@@ -1,4 +1,4 @@
+ bb_start_module(filesystem)
+ set(DEPENDS_ON bb.stream)
+-set(SOURCES filesystem.cpp filesystem.h)
++set(SOURCES filesystem.cpp filesystem.h safe_save.cpp)
+ bb_end_module()
+--- a/src/modules/bb/filesystem/commands.decls
++++ b/src/modules/bb/filesystem/commands.decls
+@@ -15,3 +15,8 @@
+ FileType%( file$ ):"bbFileType"
+ CopyFile( file$,to$ ):"bbCopyFile"
+ DeleteFile( file$ ):"bbDeleteFile"
++
++WriteFileAtomic.BBFile( filename$ ):"bbWriteFileAtomic"
++RecoverSaveTransaction( directory$ ):"bbRecoverSaveTransaction"
++BeginSaveTransaction( directory$ ):"bbBeginSaveTransaction"
++CommitSaveTransaction():"bbCommitSaveTransaction"
+--- a/src/modules/bb/filesystem/filesystem.cpp
++++ b/src/modules/bb/filesystem/filesystem.cpp
+@@ -6,6 +6,7 @@
+ #include <streambuf>
+ #include <string>
+ #include <set>
++#include <filesystem>
+ 
+ BBFileSystem *gx_filesys;
+ 
+@@ -26,6 +27,8 @@
+ 
+ struct BBFile : public BBStream{
+ 	std::streambuf *buf;
++	std::string atomicTarget,temporary;
++	bool failed=false;
+ 	BBFile( std::streambuf *f ):buf(f){
+ 	}
+ 	~BBFile(){
+@@ -35,7 +38,9 @@
+ 		return buf->sgetn( (char*)buff,size );
+ 	}
+ 	int write( const char *buff,int size ){
+-		return buf->sputn( (char*)buff,size );
++		int written=buf->sputn((char*)buff,size);
++		if(written!=size) failed=true;
++		return written;
+ 	}
+ 	int avail(){
+ 		return buf->in_avail();
+@@ -66,7 +71,8 @@
+ }
+ 
+ static BBFile *open( BBStr *f,std::ios_base::openmode n ){
+-	std::string t=canonicalpath( *f );
++	std::string t=canonicalpath( *f );delete f;
++	if(n&std::ios_base::out) t=bbSavePath(t);
+ 	std::streambuf *buf=gx_filesys->openFile( t,n );
+ 	if( buf ){
+ 		BBFile *f=d_new BBFile( buf );
+@@ -88,10 +94,28 @@
+ 	return open( f,std::ios_base::in|std::ios_base::out );
+ }
+ 
+-void BBCALL bbCloseFile( BBFile *f ){
+-	debugFile( f );
+-	file_set.erase( f );
+-	delete f;
++BBFile* BBCALL bbWriteFileAtomic(BBStr *name){
++    static unsigned serial=0;
++    std::string target=bbSavePath(canonicalpath(*name));delete name;
++    std::string temporary;
++    do { temporary=target+".pending-"+std::to_string(++serial); }
++    while(std::filesystem::exists(std::filesystem::u8path(temporary)));
++    BBFile *f=open(new BBStr(temporary),std::ios_base::out|std::ios_base::trunc);
++    if(!f) RTEX("Cannot create a temporary save file; previous save is unchanged");
++    f->atomicTarget=target;f->temporary=temporary;
++    return f;
++}
++
++void BBCALL bbCloseFile(BBFile *f){
++    debugFile(f);
++    bool failed=f->failed || f->buf->pubsync()!=0;
++    const std::string target=f->atomicTarget,temporary=f->temporary;
++    // filebuf::close reports buffered write errors (including disk full).
++    if(auto file=dynamic_cast<std::filebuf*>(f->buf)) if(!file->close()) failed=true;
++    file_set.erase(f);
++    delete f;
++    if(failed) RTEX("Save write failed; previous committed save is preserved");
++    if(!target.empty()) bbCommitFile(temporary,target,true);
+ }
+ 
+ bb_int_t BBCALL bbFilePos( BBFile *f ){
+@@ -172,7 +196,12 @@
+ 
+ BBMODULE_DESTROY( filesystem ){
+ 	if( gx_filesys ){
+-		while( file_set.size() ) bbCloseFile( *file_set.begin() );
++		while(!file_set.empty()){
++            auto f=*file_set.begin();
++            // An unclosed atomic stream was never committed by the caller.
++            if(!f->atomicTarget.empty()){ file_set.erase(f);delete f; }
++            else bbCloseFile(f);
++        }
+ 
+ 		delete gx_filesys;
+ 		gx_filesys=0;
+--- a/src/modules/bb/filesystem/filesystem.h
++++ b/src/modules/bb/filesystem/filesystem.h
+@@ -42,6 +42,8 @@
+ };
+ 
+ extern BBFileSystem *gx_filesys;
++std::string bbSavePath(const std::string &path);
++void bbCommitFile(const std::string &temporary,const std::string &target,bool backup);
+ 
+ struct BBFile;
+ 
+--- /dev/null
++++ b/src/modules/bb/filesystem/safe_save.cpp
+@@ -0,0 +1,136 @@
++#include "../stdutil/stdutil.h"
++#include "filesystem.h"
++#include <filesystem>
++#include <fstream>
++#include <stdexcept>
++#ifdef BB_WINDOWS
++#include <windows.h>
++#else
++#include <fcntl.h>
++#include <unistd.h>
++#endif
++
++namespace fs=std::filesystem;
++namespace {
++fs::path saveRoot,saveStage;
++bool saving=false;
++
++void flushFile(const fs::path &path){
++#ifdef BB_WINDOWS
++    HANDLE h=CreateFileW(path.c_str(),GENERIC_WRITE,FILE_SHARE_READ,nullptr,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,nullptr);
++    if(h==INVALID_HANDLE_VALUE) throw std::runtime_error("Cannot flush save file");
++    bool ok=FlushFileBuffers(h)!=0;CloseHandle(h);
++    if(!ok) throw std::runtime_error("Cannot flush save file");
++#else
++    int fd=::open(path.c_str(),O_WRONLY);
++    if(fd<0) throw std::runtime_error("Cannot flush save file");
++    int result=fsync(fd);close(fd);
++    if(result) throw std::runtime_error("Cannot flush save file");
++#endif
++}
++void renamePath(const fs::path &from,const fs::path &to){
++#ifdef BB_WINDOWS
++    if(!MoveFileExW(from.c_str(),to.c_str(),MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH))
++        throw std::runtime_error("Cannot commit save; check free space and folder permissions");
++#else
++    fs::rename(from,to);
++#endif
++}
++fs::path sibling(const fs::path &root,const char *suffix){ return fs::u8path(root.u8string()+suffix); }
++fs::path rootPath(const std::string &name){
++    fs::path root=fs::absolute(fs::u8path(name)).lexically_normal();
++    if(root==root.root_path() || root.filename().empty() || !fs::is_directory(root.parent_path()))
++        throw std::runtime_error("Invalid save directory");
++    for(const auto &path:{root,sibling(root,".saving"),sibling(root,".previous"),sibling(root,".transaction")})
++        if(fs::is_symlink(fs::symlink_status(path))) throw std::runtime_error("Save directories must not be links");
++    return root;
++}
++void checkTree(const fs::path &path){
++    if(!fs::exists(path)) return;
++    if(fs::is_symlink(fs::symlink_status(path))) throw std::runtime_error("Save recovery directory must not be a link");
++    for(const auto &entry:fs::recursive_directory_iterator(path))
++        if(entry.is_symlink() || (!entry.is_directory() && !entry.is_regular_file()))
++            throw std::runtime_error("Unsupported file in save directory");
++}
++void ownership(const fs::path &root){
++    const auto marker=sibling(root,".transaction");
++    // The installation is portable: moving its containing directory must not
++    // invalidate ownership of these fixed sibling recovery folders.
++    const std::string token="Hard Time save transaction v2\n"+root.filename().u8string()+"\n";
++    if(fs::exists(marker)){
++        std::ifstream input(marker,std::ios::binary);
++        std::string actual((std::istreambuf_iterator<char>(input)),{});
++        if(actual!=token) throw std::runtime_error("Unrecognized save transaction marker");
++    }else{
++        if(fs::exists(sibling(root,".saving")) || fs::exists(sibling(root,".previous")))
++            throw std::runtime_error("Unrecognized save recovery folder; preserve it before continuing");
++        std::ofstream output(marker,std::ios::binary);output<<token;output.close();
++        if(!output) throw std::runtime_error("Cannot create save transaction marker");
++        flushFile(marker);
++    }
++}
++void recover(const fs::path &root){
++    ownership(root);
++    const auto previous=sibling(root,".previous");
++    if(!fs::exists(root) && fs::is_directory(previous)) renamePath(previous,root);
++    if(!fs::is_directory(root)) throw std::runtime_error("Save directory is missing");
++}
++}
++
++std::string bbSavePath(const std::string &name){
++    if(!saving) return name;
++    const auto path=fs::absolute(fs::u8path(name)).lexically_normal();
++#ifdef BB_WINDOWS
++    const std::wstring prefix=fs::path(saveRoot).make_preferred().native()+L"\\";
++    const std::wstring full=fs::path(path).make_preferred().native();
++    if(full.size()<=prefix.size() || CompareStringOrdinal(full.c_str(),int(prefix.size()),prefix.c_str(),int(prefix.size()),TRUE)!=CSTR_EQUAL) return name;
++    fs::path relative(full.substr(prefix.size()));
++#else
++    auto relative=path.lexically_relative(saveRoot);
++#endif
++    if(relative.empty() || *relative.begin()=="..") return name;
++    return (saveStage/relative).u8string();
++}
++
++void bbCommitFile(const std::string &temporary,const std::string &target,bool backup){
++    try{
++        const auto source=fs::u8path(temporary),destination=fs::u8path(target);
++        flushFile(source);
++        if(backup && fs::is_regular_file(destination)){
++            const auto copy=sibling(destination,".bak.pending");
++            fs::copy_file(destination,copy,fs::copy_options::overwrite_existing);
++            flushFile(copy);renamePath(copy,sibling(destination,".bak"));
++        }
++        renamePath(source,destination);
++    }catch(const std::exception &e){ RTEX(e.what()); }
++}
++
++void BBCALL bbRecoverSaveTransaction(BBStr *directory){
++    std::string name=*directory;delete directory;
++    try{ recover(rootPath(name)); }catch(const std::exception &e){ RTEX(e.what()); }
++}
++void BBCALL bbBeginSaveTransaction(BBStr *directory){
++    std::string name=*directory;delete directory;
++    try{
++        if(saving) throw std::runtime_error("Save transaction already active");
++        saveRoot=rootPath(name);recover(saveRoot);checkTree(saveRoot);
++        saveStage=sibling(saveRoot,".saving");checkTree(saveStage);
++        // Siblings are resolved above, and ownership was checked before cleanup.
++        fs::remove_all(saveStage);
++        fs::copy(saveRoot,saveStage,fs::copy_options::recursive);
++        saving=true;
++    }catch(const std::exception &e){ RTEX(e.what()); }
++}
++void BBCALL bbCommitSaveTransaction(){
++    try{
++        if(!saving) throw std::runtime_error("No save transaction active");
++        for(const auto &entry:fs::recursive_directory_iterator(saveStage))
++            if(entry.is_regular_file()) flushFile(entry.path());
++        const auto previous=sibling(saveRoot,".previous");
++        checkTree(previous);fs::remove_all(previous);
++        renamePath(saveRoot,previous);
++        try{ renamePath(saveStage,saveRoot); }
++        catch(...){ renamePath(previous,saveRoot);throw; }
++        saving=false;saveRoot.clear();saveStage.clear();
++    }catch(const std::exception &e){ RTEX(e.what()); }
++}
+--- a/src/modules/bb/graphics.gl/canvas.cpp
++++ b/src/modules/bb/graphics.gl/canvas.cpp
+@@ -34,7 +34,7 @@
+ };
+ 
+ static
+-bool makeProgram( ContextResources *res,float sx,float sy,float tx,float ty,bool tex_enabled,float resx,float resy,float x,float y,float width,float height,float color[3] ){
++bool makeProgram( ContextResources *res,float sx,float sy,float tx,float ty,bool tex_enabled,float resx,float resy,float x,float y,float width,float height,float color[3],const float ui[4] ){
+ 	if( !glIsProgram( res->default_program ) ){
+ 		// LOGD( "rebuilding 2d shader...\n" );
+ 
+@@ -54,6 +54,7 @@
+ 	}
+ 
+ 	GL( glUseProgram( res->default_program ) );
++	GL( glUniform4fv(glGetUniformLocation(res->default_program,"u_uiTransform"),1,ui) );
+ 	GL( glUniform2f( glGetUniformLocation(res->default_program,"u_texoffset"),0,0 ) );
+ 
+ 	UniformState us={ 0 };
+@@ -123,10 +124,8 @@
+ 
+ 
+ GLCanvas::~GLCanvas(){
++	releaseResources();
+ 	delete[] pixels;
+-	if(texture) glDeleteTextures(1,&texture);
+-	if(depthbuffer) glDeleteRenderbuffers(1,&depthbuffer);
+-	if(framebuffer && mode!=GL_FRONT && mode!=GL_BACK) glDeleteFramebuffers(1,&framebuffer);
+ 	if( pixmap ) {
+ 		delete pixmap;
+ 		pixmap=0;
+@@ -195,6 +194,7 @@
+ }
+ 
+ void GLCanvas::plot( int x,int y ){
++    record([=]{ plot(x,y); });
+ 	if( res->plot_buffer==0 ){
+ 		const Vertex vertices[1] = {
+ 			{ 0.0,0.0,0.0,0.0 }
+@@ -209,7 +209,7 @@
+ 	GL( glEnable(GL_PROGRAM_POINT_SIZE) );
+ #endif
+ 
+-	makeProgram( res,scale_x,scale_y,1.0,1.0,false,width,height,x,y,1.0,1.0,color );
++	makeProgram( res,scale_x,scale_y,1.0,1.0,false,width,height,x,y,1.0,1.0,color,uiTransform );
+ 
+ 	GL( glBindVertexArray( res->plot_array ) );
+ 	GL( glDrawArrays( GL_POINTS,0,1 ) );
+@@ -222,6 +222,7 @@
+ }
+ 
+ void GLCanvas::line( int x,int y,int x2,int y2 ){
++    record([=]{ line(x,y,x2,y2); });
+ 	const Vertex vertices[2] = {
+ 		{ (float)x,(float)y,0.0,0.0 },
+ 		{ (float)x2,(float)y2,0.0,0.0 }
+@@ -232,7 +233,7 @@
+ 	GL( glBindBuffer( GL_ARRAY_BUFFER,res->line_buffer ) );
+ 	GL( glBufferData( GL_ARRAY_BUFFER,sizeof(vertices),vertices,GL_DYNAMIC_DRAW ) );
+ 
+-	makeProgram( res,scale_x,scale_y,1.0,1.0,false,width,height,0.0,0.0,1.0,1.0,color );
++	makeProgram( res,scale_x,scale_y,1.0,1.0,false,width,height,0.0,0.0,1.0,1.0,color,uiTransform );
+ 
+ 	GL( glBindVertexArray( res->line_array ) );
+ 	GL( glDrawArrays( GL_LINES,0,2 ) );
+@@ -241,6 +242,7 @@
+ }
+ 
+ void GLCanvas::rect( int x,int y,int w,int h,bool solid ){
++    record([=]{ rect(x,y,w,h,solid); });
+ 	quad( x,y,w,h,solid,false,1.0,1.0,color );
+ }
+ 
+@@ -279,7 +281,7 @@
+ 		GL( glBindBuffer( GL_ARRAY_BUFFER,0 ) );
+ 	}
+ 
+-	makeProgram( res,scale_x,scale_y,tx,ty,texenabled,width,height,x,y,w,h,color );
++	makeProgram( res,scale_x,scale_y,tx,ty,texenabled,width,height,x,y,w,h,color,uiTransform );
+ 	GL( glUniform2f( glGetUniformLocation(res->default_program,"u_texoffset"),ux,uy ) );
+ 
+ 	int i=solid?0:1;
+@@ -290,6 +292,7 @@
+ }
+ 
+ void GLCanvas::oval( int x,int y,int w,int h,bool solid ){
++    record([=]{ oval(x,y,w,h,solid); });
+ 	int rx=w/2.0f,ry=h/2.0f;
+ 	int segs=abs(rx)+abs(ry);
+ 
+@@ -314,7 +317,7 @@
+ 		initArrays( 1,&res->oval_buffer,&res->oval_array );
+ 	}
+ 
+-	makeProgram( res,scale_x,scale_y,1.0,1.0,false,width,height,0.0,0.0,1.0,1.0,color );
++	makeProgram( res,scale_x,scale_y,1.0,1.0,false,width,height,0.0,0.0,1.0,1.0,color,uiTransform );
+ 
+ 	GL( glBindBuffer( GL_ARRAY_BUFFER,res->oval_buffer ) );
+ 	GL( glBufferData( GL_ARRAY_BUFFER,sizeof(Vertex)*verts.size(),verts.data(),GL_DYNAMIC_DRAW ) );
+@@ -325,97 +328,59 @@
+ 	flush();
+ }
+ 
+-void GLCanvas::text( int x,int y,const std::string &t ){
+-	if( !font || t.size()==0 ) return;
+-
+-	unsigned int texture;
+-	if( res->font_textures.count(font)==0 ){
+-		GL( glGenTextures( 1,&texture ) );
+-		res->font_textures[font]=texture;
+-	}else{
+-		texture=res->font_textures[font];
+-	}
+-
+-	GL( glActiveTexture( GL_TEXTURE0 ) );
+-	GL( glBindTexture( GL_TEXTURE_2D,texture ) );
+-
+-	if( font->loadChars( t ) ){
+-		font->rebuildAtlas();
+-		if( font->atlas ){
+-			int size=font->atlas->width*font->atlas->height;
+-			std::vector<unsigned char> bmp( size*4 );
+-			for( int i=0;i<font->atlas->width*font->atlas->height;i++ ){
+-				bmp[i*4+0]=bmp[i*4+1]=bmp[i*4+2]=255;
+-				bmp[i*4+3]=font->atlas->bits[i];
+-			}
+-
+-			GL( glPixelStorei( GL_UNPACK_ALIGNMENT,1 ) );
+-			GL( glTexImage2D( GL_TEXTURE_2D,0,GL_RGBA,font->atlas->width,font->atlas->height,0,GL_RGBA,GL_UNSIGNED_BYTE,bmp.data() ) );
+-			GL( glTexParameteri( GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_CLAMP_TO_EDGE ) );
+-			GL( glTexParameteri( GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_CLAMP_TO_EDGE ) );
+-			GL( glTexParameteri( GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR ) );
+-			GL( glTexParameteri( GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR ) );
+-		}
+-	}
+-	if( !font->atlas ) return;
+-
+-	std::vector<Vertex> verts;
+-
+-	y+=font->baseline*font->density;
+-
+-	float awidth=font->atlas->width,aheight=font->atlas->height;
+-
+-	const char *c=t.c_str();
+-	utf8_int32_t curr=0,prev=0;
+-	while( *c ){
+-		prev=curr;
+-		c=utf8codepoint( c,&curr );
+-		BBImageFont::Char c=font->getChar( curr );
+-
+-		float cx=x+c.bearing_x*font->density,cy=y-c.bearing_y*font->density;
+-
+-		if( prev>0 ){
+-			cx+=font->getKerning( prev,curr );
+-		}
+-
+-		float l=c.x/awidth;
+-		float r=(c.x+c.width)/awidth;
+-		float t=c.y/aheight;
+-		float b=(c.y+c.height)/aheight;
+-
+-		Vertex lb={ cx,cy+c.height*font->density,l,b },
+-		       rb={ cx+c.width*font->density,cy+c.height*font->density,r,b },
+-		       rt={ cx+c.width*font->density,cy,r,t },
+-		       lt={ cx,cy,l,t };
+-
+-		verts.push_back( lb );verts.push_back( rb );verts.push_back( rt );
+-		verts.push_back( lb );verts.push_back( rt );verts.push_back( lt );
+-
+-		x+=c.advance*font->density;
+-	}
+-
+-	GL( glEnable( GL_BLEND ) );
+-	GL( glBlendFunc( GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA ) );
+-
+-	if( res->text_buffer==0 ){
+-		initArrays( 1,&res->text_buffer,&res->text_array );
+-	}
+-
+-	makeProgram( res,scale_x,scale_y,1.0,1.0,true,width,height,0.0,0.0,1.0,1.0,color );
+-
+-	GL( glBindBuffer( GL_ARRAY_BUFFER,res->text_buffer ) );
+-	GL( glBufferData( GL_ARRAY_BUFFER,sizeof(Vertex)*verts.size(),verts.data(),GL_DYNAMIC_DRAW ) );
+-	GL( glBindBuffer( GL_ARRAY_BUFFER,0 ) );
+-
+-	GL( glBindVertexArray( res->text_array ) );
+-	GL( glDrawArrays( GL_TRIANGLES,0,verts.size() ) );
+-	GL( glBindVertexArray( 0 ) );
+-
+-	GL( glDisable( GL_BLEND ) );
+-	flush();
++void GLCanvas::text(int x,int y,const std::string &t){
++    record([=]{ text(x,y,t); });
++    if(!font || t.empty()) return;
++    bool newTexture=res->font_textures.count(font)==0;
++    GLuint &texture=res->font_textures[font];
++    if(newTexture) glGenTextures(1,&texture);
++    glActiveTexture(GL_TEXTURE0);glBindTexture(GL_TEXTURE_2D,texture);
++    if(font->loadChars(t) || newTexture){
++        font->rebuildAtlas();res->clearText(font);
++        if(font->atlas){
++            std::vector<unsigned char> bmp(font->atlas->width*font->atlas->height*4,255);
++            for(int i=0;i<font->atlas->width*font->atlas->height;++i) bmp[i*4+3]=font->atlas->bits[i];
++            glPixelStorei(GL_UNPACK_ALIGNMENT,1);
++            glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA,font->atlas->width,font->atlas->height,0,GL_RGBA,GL_UNSIGNED_BYTE,bmp.data());
++            glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_CLAMP_TO_EDGE);
++            glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_CLAMP_TO_EDGE);
++            glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
++            glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
++        }
++    }
++    if(!font->atlas) return;
++    const auto key=std::make_pair(font,t);
++    if(res->text_cache.find(key)==res->text_cache.end()){
++        // Bound both GPU memory and the number of dynamic dialogue strings.
++        if(res->text_cache.size()>=256) res->clearText();
++        std::vector<Vertex> verts;
++        float pen=0,baseline=font->baseline*font->density;
++        float aw=font->atlas->width,ah=font->atlas->height;
++        const char *cursor=t.c_str();utf8_int32_t curr=0,prev=0;
++        while(*cursor){
++            prev=curr;cursor=utf8codepoint(cursor,&curr);
++            auto glyph=font->getChar(curr);
++            float cx=pen+glyph.bearing_x*font->density,cy=baseline-glyph.bearing_y*font->density;
++            if(prev>0) cx+=font->getKerning(prev,curr);
++            float l=glyph.x/aw,r=(glyph.x+glyph.width)/aw,top=glyph.y/ah,b=(glyph.y+glyph.height)/ah;
++            Vertex lb={cx,cy+glyph.height*font->density,l,b},rb={cx+glyph.width*font->density,cy+glyph.height*font->density,r,b};
++            Vertex rt={cx+glyph.width*font->density,cy,r,top},lt={cx,cy,l,top};
++            verts.insert(verts.end(),{lb,rb,rt,lb,rt,lt});pen+=glyph.advance*font->density;
++        }
++        TextGeometry mesh;initArrays(1,&mesh.buffer,&mesh.array);mesh.count=verts.size();
++        glBindBuffer(GL_ARRAY_BUFFER,mesh.buffer);
++        glBufferData(GL_ARRAY_BUFFER,sizeof(Vertex)*verts.size(),verts.data(),GL_STATIC_DRAW);
++        res->text_cache.emplace(key,mesh);
++    }
++    const auto &mesh=res->text_cache.at(key);
++    glEnable(GL_BLEND);glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
++    makeProgram(res,scale_x,scale_y,1,1,true,width,height,x,y,1,1,color,uiTransform);
++    glBindVertexArray(mesh.array);glDrawArrays(GL_TRIANGLES,0,mesh.count);glBindVertexArray(0);
++    glDisable(GL_BLEND);flush();
+ }
+ 
+ void GLCanvas::blit( int x,int y,BBCanvas *s,int src_x,int src_y,int src_w,int src_h,bool solid ){
++    record([=]{ blit(x,y,s,src_x,src_y,src_w,src_h,solid); });
+  GLCanvas *src=static_cast<GLCanvas*>(s);
+  x+=origin_x-src->handle_x;y+=origin_y-src->handle_y;
+  // Captures and image copies are infrequent; retain canonical top-down RGBA
+@@ -449,6 +414,7 @@
+ }
+ 
+ void GLCanvas::image( BBCanvas *c,int x,int y,bool solid ){
++    record([=]{ image(c,x,y,solid); });
+ 	GLCanvas *src=(GLCanvas*)c;
+ 
+ 	GL( glActiveTexture( GL_TEXTURE0 ) );
+@@ -737,3 +703,36 @@
+ void GLCanvas::bind(){
+ 	GL( glBindTexture( target,textureId() ) );
+ }
++
++void GLCanvas::releaseResources(){
++    clearOverlay();++res->resourceRevision;
++    if(texture) glDeleteTextures(1,&texture);
++    if(depthbuffer) glDeleteRenderbuffers(1,&depthbuffer);
++    if(framebuffer && mode!=GL_FRONT && mode!=GL_BACK) glDeleteFramebuffers(1,&framebuffer);
++    texture=depthbuffer=framebuffer=0;
++}
++GLCanvas::DrawState GLCanvas::drawState()const{
++    DrawState state={font,getColor(),cls_color,origin_x,origin_y,handle_x,handle_y,vx,vy,vw,vh,scale_x,scale_y};
++    std::copy(uiTransform,uiTransform+4,state.ui);return state;
++}
++void GLCanvas::drawState(const DrawState &s){
++    font=s.font;setColor(s.color);cls_color=s.cls;
++    origin_x=s.ox;origin_y=s.oy;handle_x=s.hx;handle_y=s.hy;
++    scale_x=s.sx;scale_y=s.sy;std::copy(s.ui,s.ui+4,uiTransform);
++    setViewport(s.vx,s.vy,s.vw,s.vh);
++}
++void GLCanvas::record(const std::function<void()> &draw){
++    if(!recording || mode!=GL_BACK) return;
++    auto state=drawState();overlay.push_back([=]{ drawState(state);draw(); });
++}
++void GLCanvas::beginOverlay(){ overlay.clear();overlayRevision=res->resourceRevision;recording=true; }
++void GLCanvas::endOverlay(){ recording=false; }
++void GLCanvas::clearOverlay(){ recording=false;overlay.clear(); }
++bool GLCanvas::overlayReady()const{ return !recording && !overlay.empty() && overlayRevision==res->resourceRevision; }
++bool GLCanvas::replayOverlay(){
++    if(!overlayReady()) return false;
++    const auto state=drawState();
++    for(const auto &draw:overlay) draw();
++    drawState(state);return true;
++}
++void GLCanvas::setTransform(float sx,float sy,float x,float y){ uiTransform[0]=sx;uiTransform[1]=sy;uiTransform[2]=x;uiTransform[3]=y; }
+--- a/src/modules/bb/graphics.gl/canvas.h
++++ b/src/modules/bb/graphics.gl/canvas.h
+@@ -3,6 +3,7 @@
+ 
+ #include <bb/graphics.gl/graphics.gl.h>
+ #include <bb/pixmap/pixmap.h>
++#include <functional>
+ 
+ class GLCanvas : public BBCanvas{
+ protected:
+@@ -27,6 +28,18 @@
+ 	bool pixels_dirty=false,render_target=false,texture_bottom_up=false;
+ 	unsigned cls_color=0xff000000U;
+ 
++    float uiTransform[4]={1,1,0,0};
++    struct DrawState{
++        BBImageFont *font;unsigned color,cls;
++        int ox,oy,hx,hy,vx,vy,vw,vh;
++        float sx,sy,ui[4];
++    };
++    bool recording=false;
++    unsigned overlayRevision=0;
++    std::vector<std::function<void()>> overlay;
++    DrawState drawState()const;
++    void drawState(const DrawState &state);
++    void record(const std::function<void()> &draw);
+ 	void flush();
+ 
+ 	void quad( int x,int y,int w,int h,bool solid,bool tex,float tx,float ty,float color[3],float ux=0,float uy=0 );
+@@ -35,6 +48,14 @@
+ 	GLCanvas( ContextResources *res,int w,int h,int f );
+ 
+ 	~GLCanvas();
++    void releaseResources();
++    void beginOverlay();
++    void endOverlay();
++    bool replayOverlay();
++    void clearOverlay();
++    bool overlayReady()const;
++    void setTransform(float sx,float sy,float x,float y);
++
+ 
+ 	int cube_face,cube_mode;
+ 	GLenum target;
+--- a/src/modules/bb/graphics.gl/default.glsl
++++ b/src/modules/bb/graphics.gl/default.glsl
+@@ -2,6 +2,7 @@
+ 
+ uniform sampler2D u_tex;
+ uniform vec2 u_texoffset;
++uniform vec4 u_uiTransform;
+ 
+ // must be mindful of alignment when ordering...
+ layout(std140) uniform BBRenderState {
+@@ -29,7 +30,7 @@
+ 
+   vec2 v_position = (a_position * wh) + xy;
+ 
+-  v_position *= RS.scale;
++  v_position = (v_position*u_uiTransform.xy+u_uiTransform.zw)*RS.scale;
+ 
+   v_position.y = RS.res.y - v_position.y;
+   v_position /= RS.res;
+--- a/src/modules/bb/graphics.gl/graphics.gl.cpp
++++ b/src/modules/bb/graphics.gl/graphics.gl.cpp
+@@ -198,3 +198,36 @@
+ BBMODULE_DESTROY( graphics_gl ){
+ 	return true;
+ }
++
++void ContextResources::clearText(BBImageFont *font){
++    for(auto it=text_cache.begin();it!=text_cache.end();){
++        if(!font || it->first.first==font){
++            glDeleteBuffers(1,&it->second.buffer);glDeleteVertexArrays(1,&it->second.array);
++            it=text_cache.erase(it);
++        }else ++it;
++    }
++}
++void ContextResources::clear(){
++    clearText();
++    for(auto pair:font_textures) glDeleteTextures(1,&pair.second);
++    font_textures.clear();
++    GLuint buffers[]={ubo,plot_buffer,line_buffer,quad_buffer[0],quad_buffer[1],oval_buffer,text_buffer};
++    GLuint arrays[]={plot_array,line_array,quad_array[0],quad_array[1],oval_array,text_array};
++    glDeleteBuffers(7,buffers);glDeleteVertexArrays(6,arrays);
++    if(default_program) glDeleteProgram(default_program);
++    ubo=plot_buffer=line_buffer=quad_buffer[0]=quad_buffer[1]=oval_buffer=text_buffer=0;
++    plot_array=line_array=quad_array[0]=quad_array[1]=oval_array=text_array=default_program=0;
++    ++resourceRevision;
++}
++void GLGraphics::forgetFont(BBFont *font){
++    auto f=static_cast<BBImageFont*>(font);
++    res.clearText(f);
++    auto it=res.font_textures.find(f);
++    if(it!=res.font_textures.end()){ glDeleteTextures(1,&it->second);res.font_textures.erase(it); }
++    ++res.resourceRevision;
++}
++void GLGraphics::releaseResources(){
++    while(!font_set.empty()) freeFont(*font_set.begin());
++    while(!canvas_set.empty()) freeCanvas(*canvas_set.begin());
++    fb.releaseResources();bb.releaseResources();res.clear();
++}
+--- a/src/modules/bb/graphics.gl/graphics.gl.h
++++ b/src/modules/bb/graphics.gl/graphics.gl.h
+@@ -42,6 +42,7 @@
+ #define GL( func ) func; bbGLGraphicsCheckErrors( __FILE__,__LINE__ );
+ // #endif
+ 
++struct TextGeometry{ GLuint buffer=0,array=0;int count=0; };
+ struct ContextResources{
+ 	unsigned int ubo;
+ 	GLuint default_program;
+@@ -51,19 +52,27 @@
+ 	GLuint oval_buffer,oval_array;
+ 	GLuint text_buffer,text_array;
+ 	std::map<BBImageFont*,unsigned int> font_textures;
++    std::map<std::pair<BBImageFont*,std::string>,TextGeometry> text_cache;
++    unsigned resourceRevision=0;
++    void clearText(BBImageFont *font=nullptr);
++    void clear();
+ };
+ 
+ #include "canvas.h"
+ 
+ class GLGraphics:public BBGraphics{
++public:
++	// Must outlive the front/back canvases that reference these resources.
++	ContextResources res={ 0 };
+ protected:
+ 	BBImageFont *def_font;
+ 
+ 	GLCanvas fb, bb;
+ public:
+-	ContextResources res={ 0 }; // TODO: will make protected again
+ 
+ 	GLGraphics();
++	void releaseResources();
++	void forgetFont(BBFont *font);
+ 
+ 	bool init();
+ 
+--- a/src/modules/bb/graphics.sdl/graphics.sdl.cpp
++++ b/src/modules/bb/graphics.sdl/graphics.sdl.cpp
+@@ -16,6 +16,8 @@
+ }
+ 
+ SDLGraphics::~SDLGraphics(){
++	SDL_GL_MakeCurrent(wnd,context);
++	releaseResources();
+ 	bbAppOnChange.remove( onAppChange,this );
+ 
+ #ifdef BB_WINDOWS
+@@ -190,7 +192,9 @@
+ 	}
+ #endif
+ 
+-	if( windowed ){
++	if(flags&BBGraphics::GRAPHICS_BORDERLESS){
++		if(SDL_SetWindowFullscreen(wnd,SDL_WINDOW_FULLSCREEN_DESKTOP)<0) SDL_SetWindowFullscreen(wnd,0);
++	}else if( windowed ){
+ 		SDL_SetWindowFullscreen( wnd,0 );
+ 	} else {
+ 		SDL_SetWindowFullscreen( wnd,SDL_WINDOW_FULLSCREEN );
+@@ -312,3 +316,16 @@
+ BBMODULE_DESTROY( graphics_sdl ){
+ 	return true;
+ }
++
++int SDLContextDriver::desktopWidth(){ SDL_DisplayMode mode{};return SDL_GetDesktopDisplayMode(0,&mode)==0?mode.w:800; }
++int SDLContextDriver::desktopHeight(){ SDL_DisplayMode mode{};return SDL_GetDesktopDisplayMode(0,&mode)==0?mode.h:600; }
++
++bool SDLGraphics::resizeWindow(int width,int height,bool borderless){
++    if(SDL_SetWindowFullscreen(wnd,borderless?SDL_WINDOW_FULLSCREEN_DESKTOP:0)<0) return false;
++    if(!borderless){ SDL_SetWindowSize(wnd,width,height);SDL_SetWindowPosition(wnd,SDL_WINDOWPOS_CENTERED,SDL_WINDOWPOS_CENTERED); }
++    resize();
++    front_canvas->setViewport(0,0,drawable_width,drawable_height);
++    back_canvas->setViewport(0,0,drawable_width,drawable_height);
++    ++res.resourceRevision;lastPresent={};
++    return drawable_width>0 && drawable_height>0;
++}
+--- a/src/modules/bb/graphics.sdl/graphics.sdl.h
++++ b/src/modules/bb/graphics.sdl/graphics.sdl.h
+@@ -10,6 +10,8 @@
+ public:
+ 	SDLContextDriver();
+ 
++	int desktopWidth();
++	int desktopHeight();
+ 	int numGraphicsDrivers();
+ 	void graphicsDriverInfo( int driver,std::string *name,int *c );
+ 	int numGraphicsModes( int driver );
+@@ -45,6 +47,7 @@
+ 	~SDLGraphics();
+ 
+ 	void resize();
++	bool resizeWindow(int width,int height,bool borderless);
+ 	void swap();
+ 	void present(bool vwait);
+ 
+--- a/src/modules/bb/graphics/canvas.h
++++ b/src/modules/bb/graphics/canvas.h
+@@ -57,6 +57,12 @@
+ 	virtual void setHandle( int x,int y )=0;
+ 	virtual void setViewport( int x,int y,int w,int h )=0;
+ 
++	virtual void beginOverlay(){}
++    virtual void endOverlay(){}
++    virtual bool replayOverlay(){ return false; }
++    virtual void clearOverlay(){}
++    virtual bool overlayReady()const{ return false; }
++    virtual void setTransform(float sx,float sy,float x,float y){}
+ 	virtual void cls()=0;
+ 	virtual void plot( int x,int y )=0;
+ 	virtual void line( int x,int y,int x2,int y2 )=0;
+--- a/src/modules/bb/graphics/commands.decls
++++ b/src/modules/bb/graphics/commands.decls
+@@ -140,3 +140,15 @@
+ Print( string$="" ):"bbPrint"
+ Input$( prompt$="" ):"bbInput"
+ Locate( x%,y% ):"bbLocate"
++
++DesktopWidth%():"bbDesktopWidth"
++DesktopHeight%():"bbDesktopHeight"
++
++BeginOverlay():"bbBeginOverlay"
++EndOverlay():"bbEndOverlay"
++ReplayOverlay%():"bbReplayOverlay"
++ClearOverlay():"bbClearOverlay"
++OverlayReady%():"bbOverlayReady"
++DrawTransform(sx#,sy#,x#=0,y#=0):"bbDrawTransform"
++
++ResizeGraphics%(width%,height%,borderless%=0):"bbResizeGraphics"
+--- a/src/modules/bb/graphics/driver.cpp
++++ b/src/modules/bb/graphics/driver.cpp
+@@ -19,5 +19,5 @@
+ }
+ 
+ void BBGraphics::freeFont( BBFont *f ){
+-	if( font_set.erase( f ) ) delete f;
++	if( font_set.erase( f ) ){ forgetFont(f);delete f; }
+ }
+--- a/src/modules/bb/graphics/graphics.cpp
++++ b/src/modules/bb/graphics/graphics.cpp
+@@ -1,6 +1,7 @@
+ 
+ #include "../stdutil/stdutil.h"
+ #include "graphics.h"
++#include <bb/filesystem/filesystem.h>
+ #include <bb/runtime/runtime.h>
+ #include <bb/system/system.h>
+ #include <bb/input/input.h>
+@@ -316,6 +317,7 @@
+ 	case 0:flags|=bb_env.debug ? BBGraphics::GRAPHICS_WINDOWED : 0 ;break;
+ 	case 1:break;
+ 	case 2:flags|=BBGraphics::GRAPHICS_WINDOWED;break;
++	case 4:flags|=BBGraphics::GRAPHICS_WINDOWED|BBGraphics::GRAPHICS_BORDERLESS;break;
+ 	case 3:flags|=BBGraphics::GRAPHICS_WINDOWED|BBGraphics::GRAPHICS_SCALED;break;
+ 	case 6:flags|=BBGraphics::GRAPHICS_WINDOWED|BBGraphics::GRAPHICS_AUTOSUSPEND;break;
+ 	case 7:flags|=BBGraphics::GRAPHICS_WINDOWED|BBGraphics::GRAPHICS_SCALED|BBGraphics::GRAPHICS_AUTOSUSPEND;break;
+@@ -332,6 +334,7 @@
+ 	case 0:flags|=(bb_env.debug && bbWindowed3D()) ? BBGraphics::GRAPHICS_WINDOWED : 0 ;break;
+ 	case 1:break;
+ 	case 2:flags|=BBGraphics::GRAPHICS_WINDOWED;break;
++	case 4:flags|=BBGraphics::GRAPHICS_WINDOWED|BBGraphics::GRAPHICS_BORDERLESS;break;
+ 	case 3:flags|=BBGraphics::GRAPHICS_WINDOWED|BBGraphics::GRAPHICS_SCALED;break;
+ 	case 6:flags|=BBGraphics::GRAPHICS_WINDOWED|BBGraphics::GRAPHICS_AUTOSUSPEND;break;
+ 	case 7:flags|=BBGraphics::GRAPHICS_WINDOWED|BBGraphics::GRAPHICS_SCALED|BBGraphics::GRAPHICS_AUTOSUSPEND;break;
+@@ -348,7 +351,7 @@
+ }
+ 
+ void BBCALL bbEndGraphics(){
+-	bbContextDriver->closeGraphics( gx_graphics );
++	freeGraphics();
+ 	if( !bbDefaultGraphics() ){
+ 		RTEX( "Unable to set graphics mode" );
+ 	}
+@@ -600,7 +603,9 @@
+ bb_int_t BBCALL bbSaveBuffer( BBCanvas *c,BBStr *str ){
+ 	debugCanvas( c );
+ 	std::string t=*str;delete str;
+-	return saveCanvas( c,t ) ? 1 : 0;
++	const bool saved=saveCanvas(c,bbSavePath(t));
++	if(!saved && bbSavePath(t)!=t) RTEX("Cannot write save photo; previous save is preserved");
++	return saved ? 1 : 0;
+ }
+ 
+ void BBCALL bbOrigin( bb_int_t x,bb_int_t y ){
+@@ -818,7 +823,9 @@
+ 	debugImage( i,n );
+ 	std::string t=*str;delete str;
+ 	BBCanvas *c=i->getFrames()[n];
+-	return saveCanvas( c,t ) ? 1 : 0;
++	const bool saved=saveCanvas(c,bbSavePath(t));
++	if(!saved && bbSavePath(t)!=t) RTEX("Cannot write save photo; previous save is preserved");
++	return saved ? 1 : 0;
+ }
+ 
+ void BBCALL bbGrabImage( BBImage *i,bb_int_t x,bb_int_t y,bb_int_t n ){
+@@ -1255,3 +1262,15 @@
+ 	gfx_modes.clear();
+ 	return true;
+ }
++
++bb_int_t BBCALL bbDesktopWidth(){ return bbContextDriver->desktopWidth(); }
++bb_int_t BBCALL bbDesktopHeight(){ return bbContextDriver->desktopHeight(); }
++
++void BBCALL bbBeginOverlay(){ if(gx_canvas) gx_canvas->beginOverlay(); }
++void BBCALL bbEndOverlay(){ if(gx_canvas) gx_canvas->endOverlay(); }
++bb_int_t BBCALL bbReplayOverlay(){ return gx_canvas && gx_canvas->replayOverlay(); }
++void BBCALL bbClearOverlay(){ if(gx_canvas) gx_canvas->clearOverlay(); }
++bb_int_t BBCALL bbOverlayReady(){ return gx_canvas && gx_canvas->overlayReady(); }
++void BBCALL bbDrawTransform(bb_float_t sx,bb_float_t sy,bb_float_t x,bb_float_t y){ if(gx_canvas) gx_canvas->setTransform(sx,sy,x,y); }
++
++bb_int_t BBCALL bbResizeGraphics(bb_int_t w,bb_int_t h,bb_int_t borderless){ return gx_graphics && w>0 && h>0 && gx_graphics->resizeWindow(w,h,borderless!=0); }
+--- a/src/modules/bb/graphics/graphics.h
++++ b/src/modules/bb/graphics/graphics.h
+@@ -24,6 +24,7 @@
+ 		GRAPHICS_WINDOWED=1,	//windowed mode
+ 		GRAPHICS_SCALED=2,		//scaled window
+ 		GRAPHICS_3D=4,			//3d mode! Hurrah!
++		GRAPHICS_BORDERLESS=16,
+ 		GRAPHICS_AUTOSUSPEND=8	//suspend graphics when app suspended
+ 	};
+ 
+@@ -31,6 +32,7 @@
+ 
+ 	virtual void backup()=0;
+ 	virtual bool restore()=0;
++	virtual bool resizeWindow(int width,int height,bool borderless){ return false; }
+ 
+ 	//MANIPULATORS
+ 	virtual void vwait()=0;
+@@ -71,6 +73,7 @@
+ 
+ 	virtual BBFont *loadFont( const std::string &font,int height,int flags );
+ 	BBFont *verifyFont( BBFont *font );
++	virtual void forgetFont(BBFont *font){}
+ 	void freeFont( BBFont *font );
+ };
+ 
+@@ -92,6 +95,8 @@
+ 
+ 	bool graphicsOpened();
+ 
++  virtual int desktopWidth(){ return 800; }
++  virtual int desktopHeight(){ return 600; }
+   virtual int numGraphicsDrivers()=0;
+   virtual void graphicsDriverInfo( int driver,std::string *name,int *c )=0;
+   virtual int numGraphicsModes( int driver )=0;
+--- a/src/modules/bb/input/input.cpp
++++ b/src/modules/bb/input/input.cpp
+@@ -17,6 +17,11 @@
+ static int mouse_x,mouse_y,mouse_z;
+ static const float JLT=-1.0f/3.0f;
+ static const float JHT=1.0f/3.0f;
++
++void bbRefreshJoysticks(){
++    bbJoysticks.clear();
++    if(gx_input) for(int k=0;k<gx_input->numJoysticks();++k) bbJoysticks.push_back(gx_input->getJoystick(k));
++}
+ 
+ int BBCALL bbEnumInput(){
+ 	if( gx_input ){
+--- a/src/modules/bb/input/input.h
++++ b/src/modules/bb/input/input.h
+@@ -16,3 +16,5 @@
+ #include "commands.h"
+ 
+ #endif
++
++void bbRefreshJoysticks();
+--- /dev/null
++++ b/src/modules/bb/runtime.sdl/joystick.h
+@@ -0,0 +1,60 @@
++#pragma once
++#include <SDL.h>
++#include <bb/input/driver.h>
++#include <algorithm>
++#include <cstdio>
++#include <cstring>
++#include <vector>
++
++class SDLJoystick : public BBDevice{
++public:
++    SDL_Joystick *js=nullptr;
++    ~SDLJoystick(){ if(js) SDL_JoystickClose(js); }
++    void detach(){ if(js) SDL_JoystickClose(js);js=nullptr;reset(); }
++    void attach(SDL_Joystick *device){
++        js=device;reset();
++        SDL_JoystickGetGUIDString(SDL_JoystickGetGUID(js),id,sizeof(id));
++        snprintf(name,sizeof(name),"%s",SDL_JoystickName(js));
++    }
++    void update(){
++        bbRuntimeIdle();
++        if(!js || !SDL_JoystickGetAttached(js)){ reset();return; }
++        SDL_JoystickUpdate();
++        int axes=std::min(32,SDL_JoystickNumAxes(js));
++        for(int i=0;i<axes;++i){
++            int value=SDL_JoystickGetAxis(js,i);
++            axis_states[i]=float(value)/(value<0?32768.0f:32767.0f);
++        }
++        int buttons=std::min(255,SDL_JoystickNumButtons(js));
++        for(int i=0;i<buttons;++i) setDownState(i+1,SDL_JoystickGetButton(js,i));
++    }
++};
++
++class SDLInputDriver : public BBInputDriver{
++    // A callback can disconnect the device whose update() is running.
++    // Keep wrapper addresses alive until driver destruction.
++    std::vector<SDLJoystick*> pool,active;
++public:
++    SDLInputDriver(){ refresh(); }
++    ~SDLInputDriver(){ for(auto joystick:pool) delete joystick; }
++    void refresh(){
++        for(auto joystick:pool) if(joystick->js && !SDL_JoystickGetAttached(joystick->js)) joystick->detach();
++        active.clear();
++        for(int i=0;i<SDL_NumJoysticks();++i){
++            SDL_JoystickID instance=SDL_JoystickGetDeviceInstanceID(i);
++            SDLJoystick *device=nullptr;
++            for(auto candidate:pool) if(candidate->js && SDL_JoystickInstanceID(candidate->js)==instance) device=candidate;
++            if(!device){
++                SDL_Joystick *opened=SDL_JoystickOpen(i);if(!opened) continue;
++                for(auto candidate:pool) if(!candidate->js){ device=candidate;break; }
++                if(!device){ device=new SDLJoystick();pool.push_back(device); }
++                device->attach(opened);
++            }
++            active.push_back(device);
++        }
++    }
++    BBDevice *getJoystick(int port)const{ return port>=0 && port<active.size()?active[port]:nullptr; }
++    int getJoystickType(int port)const{ return getJoystick(port)?1:0; }
++    int numJoysticks()const{ return active.size(); }
++    int toAscii(int code)const{ return code&0xff; }
++};
+--- a/src/modules/bb/runtime.sdl/runtime.sdl.cpp
++++ b/src/modules/bb/runtime.sdl/runtime.sdl.cpp
+@@ -17,54 +17,7 @@
+ 
+ #include <bb/input/input.h>
+ 
+-class SDLJoystick : public BBDevice{
+-private:
+-	SDL_Joystick *js;
+-public:
+-	SDLJoystick( SDL_Joystick *js ):js(js){
+-		memset( axis_states,0,sizeof(axis_states) );
+-		memset( down_state,0,sizeof(down_state) );
+-
+-		SDL_JoystickGetGUIDString( SDL_JoystickGetGUID(js),id,sizeof(id) );
+-		snprintf( name,sizeof(name),"%s",SDL_JoystickName( js ) );
+-	}
+-
+-	~SDLJoystick(){ SDL_JoystickClose( js ); }
+-
+-	void update(){
+-		bbRuntimeIdle();
+-		SDL_JoystickUpdate();
+-		int ax_count=SDL_JoystickNumAxes( js );
+-		if( ax_count>32 ) ax_count=32;
+-
+-		for( int i=0;i<ax_count;i++ ){
+-			int value=SDL_JoystickGetAxis( js,i );
+-			axis_states[i]=(float)value/(value<0?32768.0f:32767.0f);
+-		}
+-
+-		int btn_count=std::min(255,SDL_JoystickNumButtons( js ));
+-		for( int i=0;i<btn_count;i++ ){
+-			setDownState( i+1,SDL_JoystickGetButton( js,i ) );
+-		}
+-	}
+-};
+-
+-class SDLInputDriver : public BBInputDriver{
+-	std::vector<BBDevice*> joysticks;
+-public:
+-	SDLInputDriver(){
+-		for( int i=0;i<SDL_NumJoysticks();++i ){
+-			if( SDL_Joystick *js=SDL_JoystickOpen(i) ) joysticks.push_back(d_new SDLJoystick(js));
+-		}
+-	}
+-	~SDLInputDriver(){ for( auto joystick:joysticks ) delete joystick; }
+-	BBDevice *getJoystick( int port )const{
+-		return port>=0&&port<joysticks.size()?joysticks[port]:nullptr;
+-	}
+-	int getJoystickType( int port )const{ return getJoystick(port)?1:0; }
+-	int numJoysticks()const{ return joysticks.size(); }
+-	int toAscii( int code )const{ return code&0xff; }
+-};
++#include "joystick.h"
+ 
+ std::map<SDL_Window*,SDLRuntime*> runtimes;
+ 
+@@ -112,7 +65,10 @@
+ 	while( SDL_PollEvent(&event) ){
+ 		if( event.type == SDL_QUIT ){
+ 			if( !bbRequestAppClose() ) RTEX( 0 );
+-		}else if( event.type==SDL_WINDOWEVENT ){
++		}else if(event.type==SDL_JOYDEVICEADDED || event.type==SDL_JOYDEVICEREMOVED){
++            static_cast<SDLInputDriver*>(gx_input)->refresh();
++            bbRefreshJoysticks();
++        }else if( event.type==SDL_WINDOWEVENT ){
+ 			if( event.window.event==SDL_WINDOWEVENT_FOCUS_LOST ){
+ 				bbKeyboard.reset();
+ 				for( int button=1;button<=3;++button ) bbMouse.upEvent(button);
+@@ -239,3 +195,8 @@
+ BBMODULE_DESTROY( runtime_sdl ){
+ 	return true;
+ }
++
++bool SDLRuntime::focused(){
++    auto graphics=static_cast<SDLGraphics*>(bbContextDriver->getGraphics());
++    return graphics && (SDL_GetWindowFlags(graphics->wnd)&SDL_WINDOW_INPUT_FOCUS)!=0;
++}
+--- a/src/modules/bb/runtime.sdl/runtime.sdl.h
++++ b/src/modules/bb/runtime.sdl/runtime.sdl.h
+@@ -25,6 +25,7 @@
+ 	void asyncEnd();
+ 
+ 	bool idle();
++	bool focused();
+ 
+ 	void *window();
+ 
+--- a/src/modules/bb/runtime/commands.decls
++++ b/src/modules/bb/runtime/commands.decls
+@@ -4,3 +4,5 @@
+ MoveMouse( x%,y% ):"bbMoveMouse"
+ AppCloseEvents( enable% ):"bbAppCloseEvents"
+ AppCloseRequested%():"bbAppCloseRequested"
++
++AppFocused%():"bbAppFocused"
+--- a/src/modules/bb/runtime/runtime.cpp
++++ b/src/modules/bb/runtime/runtime.cpp
+@@ -79,3 +79,5 @@
+   delete bbRuntimeOnResume;
+   return true;
+ }
++
++bb_int_t BBCALL bbAppFocused(){ return bbRuntime && bbRuntime->focused(); }
+--- a/src/modules/bb/runtime/runtime.h
++++ b/src/modules/bb/runtime/runtime.h
+@@ -15,6 +15,7 @@
+   virtual void asyncEnd()=0;
+ 
+   virtual bool idle()=0;
++  virtual bool focused(){ return true; }
+ 
+   virtual void *window()=0;
+ 

@@ -1,0 +1,1 @@
+PASS independent category gains, live sliders and silent channel state

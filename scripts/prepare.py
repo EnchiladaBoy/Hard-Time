@@ -20,7 +20,8 @@ PATCHES = ["engine-linux-arm64.patch", "build-dependency-sdl.patch",
            "game-no-alarm.patch"]
 if PLATFORM == "windows-x64":
     PATCHES += ["engine-windows-x64.patch", "game-windows.patch",
-                "engine-refresh-windows.patch", "game-refresh-windows.patch"]
+                "engine-refresh-windows.patch", "game-refresh-windows.patch",
+                "engine-modern-windows.patch", "game-modern-windows.patch"]
 SUBMODULES = ["crossguid/src", "enet/tree", "freeimage/src", "freetype2/tree",
               "json-hpp/tree", "libpng/tree", "minimp3/tree", "ogg/tree",
               "sdl/tree", "toml11/tree", "utf8.h/tree", "vorbis/tree", "zlib/tree"]
@@ -111,6 +112,8 @@ def main():
         apply(game, ROOT / "patches/game-windows.patch")
         apply(engine, ROOT / "patches/engine-refresh-windows.patch")
         apply(game, ROOT / "patches/game-refresh-windows.patch")
+        apply(engine, ROOT / "patches/engine-modern-windows.patch")
+        apply(game, ROOT / "patches/game-modern-windows.patch")
     marker.write_text(json.dumps({"recipe_sha256": stamp, "engine_commit": LOCK["engine_commit"],
                                   "game_commit": LOCK["commit"], "platform": PLATFORM}, indent=2) + "\n")
     print(f"Prepared pinned engine and game source: {WORK}")

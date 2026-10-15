@@ -1,0 +1,701 @@
+{
+  "date_utc": "2026-10-15T08:27:11.300368+00:00",
+  "scope": "Six Windows improvements: resource lifetime, safer saves, display/HUD settings, controls/focus, audio groups and rendering overhead.",
+  "host": {
+    "os": "Windows 11 Pro 10.0.26200 AMD64",
+    "display_adapter": "Microsoft Basic Display Adapter",
+    "renderer": "Mesa 26.2.4 llvmpipe, app-local",
+    "reported_display_frequency": 1,
+    "fallback_target_hz": 60
+  },
+  "executable_sha256": "9c7720bc1453189c0b2e0f19ac2fbaa94e5fdf1a421bea7cba2f79f85ea06a9d",
+  "source_preparation": {
+    "compared": {
+      "engine": 2970,
+      "game": 20
+    },
+    "differences": 0,
+    "recipe_sha256": "1a3948a20d91dcfb8eeed2dbd342004b785df59cfeaa73cc7cd407944bafdb28",
+    "method": "Fresh pinned source preparation, reapply final modern patches to its baseline, then byte-compare all non-generated engine files outside dependency trees and all 20 BASIC files against compiled sources. Normal scripts/windows.py build completed afterwards.",
+    "excluded": "Dependency trees, Git metadata, generated command/runtime/shader files and binary build outputs."
+  },
+  "patches": {
+    "engine-modern-windows.patch": "b36dd378a7eb4938ee3236f1b3207337ed8b3bd4f27b8eadb409d373e8ba7fb0",
+    "game-modern-windows.patch": "ad3d8355cb2f29834e77ba8ec9c5db7a0230fb65bca25854e75158161415ffeb",
+    "game-no-alarm.patch": "361af6fb258e058a771beba07a7781956b62d0cae72f0a8349e030ac1a016fbf"
+  },
+  "automated_checks": {
+    "runtime": [
+      {
+        "name": "boolean-smoke",
+        "passed": true
+      },
+      {
+        "name": "rounding-smoke",
+        "passed": true
+      },
+      {
+        "name": "semantics",
+        "passed": true
+      },
+      {
+        "name": "runtime-smoke",
+        "passed": true
+      },
+      {
+        "name": "graphics-smoke",
+        "passed": true
+      },
+      {
+        "name": "material-smoke",
+        "passed": true
+      },
+      {
+        "name": "texture-alpha-smoke",
+        "passed": true
+      },
+      {
+        "name": "window-close-smoke",
+        "passed": true
+      },
+      {
+        "name": "capture-repeat-smoke",
+        "passed": true
+      },
+      {
+        "name": "timer-poll-smoke",
+        "passed": true
+      },
+      {
+        "name": "interpolation-smoke",
+        "passed": true
+      },
+      {
+        "name": "overlay-smoke",
+        "passed": true
+      },
+      {
+        "name": "audio-groups-smoke",
+        "passed": true
+      },
+      {
+        "name": "save-transaction-smoke",
+        "passed": true
+      },
+      {
+        "name": "preferences-smoke",
+        "passed": true
+      },
+      {
+        "name": "display-lifecycle-smoke",
+        "passed": true
+      },
+      {
+        "name": "font-smoke",
+        "passed": true
+      },
+      {
+        "name": "hud-fit-smoke",
+        "passed": true
+      },
+      {
+        "name": "graphics-postflip-smoke",
+        "passed": true
+      }
+    ],
+    "installer": {
+      "passed": 8,
+      "failed": 0,
+      "includes": "Save/photo preservation, install lock, architecture/renderer guards, and interrupted-save recovery after moving an installation."
+    },
+    "controller": {
+      "passed": true,
+      "method": "Compile the production SDL joystick wrapper with actual BBDevice code and use SDL virtual devices for attach, input, disconnect, stale pointer and reconnect."
+    }
+  },
+  "game_checks": {
+    "settings_roundtrip": {
+      "passed": true,
+      "executable_sha256": "88293e6039d42bbc3d9089b089cb8c9e901f5acca782e3d84701b0c46a404da7",
+      "method": "In-game keyboard input enabled borderless desktop, set HUD 125%, camera sensitivity 125%, distance 110%, selected WASD, rebound forward to G, and set music/effects/ambience to 95%; persisted binary values checked. Later final-build edits changed recovery-marker portability and key-label wording/alignment."
+    },
+    "final_build": {
+      "slot_reset_cancel": true,
+      "slot_reset_confirm": true,
+      "previous_slot_retained": true,
+      "gameplay_close_commits_progress_and_photo": true,
+      "save_reload": true,
+      "focus_loss_pauses": true,
+      "focus_method": "Make the game foreground, focus a separate test window, verify foreground change and inspect the PAUSED screenshot. Posting synthetic focus messages alone does not establish a real focus change.",
+      "keyboard_menu_visual_check": true,
+      "display_mode_timeout_reverts": true,
+      "zip_launcher_exit_code": 0,
+      "relocated_zip_launcher_recovers_missing_data_before_backup": true
+    },
+    "audio": "OpenAL gain assertions passed for live independent groups and a zero-volume playing channel. All alarm initializers remain silent. No physical listening test."
+  },
+  "installations_updated": [
+    {
+      "directory": "dist/Hard-Time-Windows-x64",
+      "preserved_files": 6,
+      "executable_sha256": "9c7720bc1453189c0b2e0f19ac2fbaa94e5fdf1a421bea7cba2f79f85ea06a9d"
+    },
+    {
+      "directory": ".work/playtest",
+      "preserved_files": 196,
+      "executable_sha256": "9c7720bc1453189c0b2e0f19ac2fbaa94e5fdf1a421bea7cba2f79f85ea06a9d"
+    },
+    {
+      "directory": ".work/fps-playtest",
+      "preserved_files": 177,
+      "executable_sha256": "9c7720bc1453189c0b2e0f19ac2fbaa94e5fdf1a421bea7cba2f79f85ea06a9d"
+    }
+  ],
+  "performance": {
+    "fixture": "Fresh disposable copies of the same slot; 20 characters in location 9 at 800x600. Source saves are read only. Relocated characters have held-weapon references cleared.",
+    "command": "python tests/benchmark_windows.py --assets <native-install-with-slot-2> --baseline <old.exe> --candidate <new.exe> --output <fresh-directory> --seconds 24 --warmup 8 --shadows 2",
+    "sampling": "Internal counters, timed warm-up omitted, raw approximately two-second aggregates retained. Final-only runs also measured the final binary with complex shadows and no shadows.",
+    "interpretation": "These are nondeterministic scene samples with AI and camera changes, not a controlled speedup comparison. The final complex-shadow wide crowd sample spent 24240 of 25465 ms inside RenderWorld (including submission/driver work), at 0.825 FPS and 28.94 timer ticks/s. The shadows-off sample entered dialogue in every retained sample and averaged 40.35 FPS, so its average cannot isolate the effect of shadows. Crowded software-rendered scenes remain slow; there is no high-FPS guarantee.",
+    "trials": [
+      {
+        "name": "baseline",
+        "executable_sha256": "0ccaced6955e05552966de03e8a7c7872a7cbe4bd07a6051fb6f09139b9f5dee",
+        "characters": 20,
+        "shadows": 2,
+        "sample_ms": 19300,
+        "fps": 5.699481865284974,
+        "simulation_hz": 31.55440414507772,
+        "dialogue_samples": 2,
+        "rows": [
+          {
+            "elapsed_ms": "2629",
+            "frames": "3",
+            "ticks": "84",
+            "fps": "1.14112",
+            "simulation_hz": "31.9513",
+            "location": "9",
+            "promo": "0"
+          },
+          {
+            "elapsed_ms": "2025",
+            "frames": "2",
+            "ticks": "53",
+            "fps": "0.987654",
+            "simulation_hz": "26.1728",
+            "location": "9",
+            "promo": "0"
+          },
+          {
+            "elapsed_ms": "2512",
+            "frames": "3",
+            "ticks": "84",
+            "fps": "1.19427",
+            "simulation_hz": "33.4395",
+            "location": "9",
+            "promo": "0"
+          },
+          {
+            "elapsed_ms": "2937",
+            "frames": "3",
+            "ticks": "82",
+            "fps": "1.02145",
+            "simulation_hz": "27.9196",
+            "location": "9",
+            "promo": "0"
+          },
+          {
+            "elapsed_ms": "2951",
+            "frames": "3",
+            "ticks": "88",
+            "fps": "1.0166",
+            "simulation_hz": "29.8204",
+            "location": "9",
+            "promo": "0"
+          },
+          {
+            "elapsed_ms": "2231",
+            "frames": "3",
+            "ticks": "75",
+            "fps": "1.34469",
+            "simulation_hz": "33.6172",
+            "location": "9",
+            "promo": "0"
+          },
+          {
+            "elapsed_ms": "2015",
+            "frames": "33",
+            "ticks": "83",
+            "fps": "16.3772",
+            "simulation_hz": "41.1911",
+            "location": "9",
+            "promo": "214"
+          },
+          {
+            "elapsed_ms": "2000",
+            "frames": "60",
+            "ticks": "60",
+            "fps": "30.0",
+            "simulation_hz": "30.0",
+            "location": "9",
+            "promo": "214"
+          }
+        ],
+        "trial_group": "Pre-change comparison and development candidate"
+      },
+      {
+        "name": "candidate",
+        "executable_sha256": "2c9cc2d92423250521019fdd7efc7a9445c3b1c130eb74de4f7c451167074125",
+        "characters": 20,
+        "shadows": 2,
+        "sample_ms": 19345,
+        "fps": 14.732489015249419,
+        "simulation_hz": 31.79116050659085,
+        "dialogue_samples": 9,
+        "rows": [
+          {
+            "elapsed_ms": "2545",
+            "frames": "2",
+            "ticks": "75",
+            "fps": "0.785855",
+            "simulation_hz": "29.4695",
+            "location": "9",
+            "promo": "214",
+            "update_ms": "120",
+            "render_ms": "2400",
+            "ui_ms": "23",
+            "present_ms": "2"
+          },
+          {
+            "elapsed_ms": "2010",
+            "frames": "51",
+            "ticks": "97",
+            "fps": "25.3731",
+            "simulation_hz": "48.2587",
+            "location": "9",
+            "promo": "214",
+            "update_ms": "180",
+            "render_ms": "1697",
+            "ui_ms": "100",
+            "present_ms": "33"
+          },
+          {
+            "elapsed_ms": "2012",
+            "frames": "52",
+            "ticks": "60",
+            "fps": "25.8449",
+            "simulation_hz": "29.8211",
+            "location": "9",
+            "promo": "214",
+            "update_ms": "118",
+            "render_ms": "1758",
+            "ui_ms": "92",
+            "present_ms": "43"
+          },
+          {
+            "elapsed_ms": "2432",
+            "frames": "4",
+            "ticks": "49",
+            "fps": "1.64474",
+            "simulation_hz": "20.148",
+            "location": "9",
+            "promo": "214",
+            "update_ms": "77",
+            "render_ms": "2342",
+            "ui_ms": "10",
+            "present_ms": "3"
+          },
+          {
+            "elapsed_ms": "2036",
+            "frames": "49",
+            "ticks": "85",
+            "fps": "24.0668",
+            "simulation_hz": "41.7485",
+            "location": "9",
+            "promo": "214",
+            "update_ms": "161",
+            "render_ms": "1749",
+            "ui_ms": "87",
+            "present_ms": "39"
+          },
+          {
+            "elapsed_ms": "2031",
+            "frames": "48",
+            "ticks": "61",
+            "fps": "23.6337",
+            "simulation_hz": "30.0345",
+            "location": "9",
+            "promo": "214",
+            "update_ms": "117",
+            "render_ms": "1807",
+            "ui_ms": "71",
+            "present_ms": "35"
+          },
+          {
+            "elapsed_ms": "2270",
+            "frames": "28",
+            "ticks": "52",
+            "fps": "12.3348",
+            "simulation_hz": "22.9075",
+            "location": "9",
+            "promo": "214",
+            "update_ms": "99",
+            "render_ms": "2093",
+            "ui_ms": "53",
+            "present_ms": "25"
+          },
+          {
+            "elapsed_ms": "2008",
+            "frames": "6",
+            "ticks": "76",
+            "fps": "2.98805",
+            "simulation_hz": "37.8486",
+            "location": "9",
+            "promo": "214",
+            "update_ms": "123",
+            "render_ms": "1868",
+            "ui_ms": "12",
+            "present_ms": "5"
+          },
+          {
+            "elapsed_ms": "2001",
+            "frames": "45",
+            "ticks": "60",
+            "fps": "22.4888",
+            "simulation_hz": "29.985",
+            "location": "9",
+            "promo": "214",
+            "update_ms": "123",
+            "render_ms": "1751",
+            "ui_ms": "89",
+            "present_ms": "38"
+          }
+        ],
+        "trial_group": "Pre-change comparison and development candidate",
+        "profile_totals_ms": {
+          "update_ms": 1118,
+          "render_ms": 17465,
+          "ui_ms": 537,
+          "present_ms": 223
+        }
+      },
+      {
+        "name": "candidate",
+        "executable_sha256": "9c7720bc1453189c0b2e0f19ac2fbaa94e5fdf1a421bea7cba2f79f85ea06a9d",
+        "characters": 20,
+        "shadows": 2,
+        "sample_ms": 25465,
+        "fps": 0.8246612998232868,
+        "simulation_hz": 28.94168466522678,
+        "dialogue_samples": 0,
+        "rows": [
+          {
+            "elapsed_ms": "2960",
+            "frames": "3",
+            "ticks": "85",
+            "fps": "1.01351",
+            "simulation_hz": "28.7162",
+            "location": "9",
+            "promo": "0",
+            "update_ms": "132",
+            "render_ms": "2814",
+            "ui_ms": "12",
+            "present_ms": "2"
+          },
+          {
+            "elapsed_ms": "2431",
+            "frames": "3",
+            "ticks": "77",
+            "fps": "1.23406",
+            "simulation_hz": "31.6742",
+            "location": "9",
+            "promo": "0",
+            "update_ms": "118",
+            "render_ms": "2298",
+            "ui_ms": "12",
+            "present_ms": "3"
+          },
+          {
+            "elapsed_ms": "2306",
+            "frames": "2",
+            "ticks": "58",
+            "fps": "0.867303",
+            "simulation_hz": "25.1518",
+            "location": "9",
+            "promo": "0",
+            "update_ms": "87",
+            "render_ms": "2209",
+            "ui_ms": "9",
+            "present_ms": "1"
+          },
+          {
+            "elapsed_ms": "2313",
+            "frames": "2",
+            "ticks": "76",
+            "fps": "0.864678",
+            "simulation_hz": "32.8578",
+            "location": "9",
+            "promo": "0",
+            "update_ms": "109",
+            "render_ms": "2194",
+            "ui_ms": "9",
+            "present_ms": "1"
+          },
+          {
+            "elapsed_ms": "2312",
+            "frames": "3",
+            "ticks": "77",
+            "fps": "1.29758",
+            "simulation_hz": "33.3045",
+            "location": "9",
+            "promo": "0",
+            "update_ms": "114",
+            "render_ms": "2184",
+            "ui_ms": "12",
+            "present_ms": "2"
+          },
+          {
+            "elapsed_ms": "2104",
+            "frames": "2",
+            "ticks": "46",
+            "fps": "0.95057",
+            "simulation_hz": "21.8631",
+            "location": "9",
+            "promo": "0",
+            "update_ms": "69",
+            "render_ms": "2025",
+            "ui_ms": "8",
+            "present_ms": "2"
+          },
+          {
+            "elapsed_ms": "3856",
+            "frames": "2",
+            "ticks": "94",
+            "fps": "0.518672",
+            "simulation_hz": "24.3776",
+            "location": "9",
+            "promo": "0",
+            "update_ms": "135",
+            "render_ms": "3712",
+            "ui_ms": "8",
+            "present_ms": "1"
+          },
+          {
+            "elapsed_ms": "3617",
+            "frames": "2",
+            "ticks": "115",
+            "fps": "0.552944",
+            "simulation_hz": "31.7943",
+            "location": "9",
+            "promo": "0",
+            "update_ms": "179",
+            "render_ms": "3428",
+            "ui_ms": "8",
+            "present_ms": "2"
+          },
+          {
+            "elapsed_ms": "3566",
+            "frames": "2",
+            "ticks": "109",
+            "fps": "0.560852",
+            "simulation_hz": "30.5665",
+            "location": "9",
+            "promo": "0",
+            "update_ms": "166",
+            "render_ms": "3376",
+            "ui_ms": "9",
+            "present_ms": "2"
+          }
+        ],
+        "trial_group": "Final build, complex shadows",
+        "profile_totals_ms": {
+          "update_ms": 1109,
+          "render_ms": 24240,
+          "ui_ms": 87,
+          "present_ms": 16
+        }
+      },
+      {
+        "name": "candidate",
+        "executable_sha256": "9c7720bc1453189c0b2e0f19ac2fbaa94e5fdf1a421bea7cba2f79f85ea06a9d",
+        "characters": 20,
+        "shadows": 0,
+        "sample_ms": 24486,
+        "fps": 40.34958751939884,
+        "simulation_hz": 29.97631299518092,
+        "dialogue_samples": 12,
+        "rows": [
+          {
+            "elapsed_ms": "2016",
+            "frames": "80",
+            "ticks": "60",
+            "fps": "39.6825",
+            "simulation_hz": "29.7619",
+            "location": "9",
+            "promo": "214",
+            "update_ms": "125",
+            "render_ms": "1690",
+            "ui_ms": "142",
+            "present_ms": "59"
+          },
+          {
+            "elapsed_ms": "2011",
+            "frames": "73",
+            "ticks": "60",
+            "fps": "36.3003",
+            "simulation_hz": "29.8359",
+            "location": "9",
+            "promo": "214",
+            "update_ms": "124",
+            "render_ms": "1709",
+            "ui_ms": "123",
+            "present_ms": "55"
+          },
+          {
+            "elapsed_ms": "2004",
+            "frames": "74",
+            "ticks": "61",
+            "fps": "36.9261",
+            "simulation_hz": "30.4391",
+            "location": "9",
+            "promo": "214",
+            "update_ms": "134",
+            "render_ms": "1676",
+            "ui_ms": "135",
+            "present_ms": "58"
+          },
+          {
+            "elapsed_ms": "2381",
+            "frames": "24",
+            "ticks": "41",
+            "fps": "10.0798",
+            "simulation_hz": "17.2197",
+            "location": "9",
+            "promo": "214",
+            "update_ms": "74",
+            "render_ms": "2250",
+            "ui_ms": "43",
+            "present_ms": "14"
+          },
+          {
+            "elapsed_ms": "2013",
+            "frames": "74",
+            "ticks": "91",
+            "fps": "36.7611",
+            "simulation_hz": "45.2062",
+            "location": "9",
+            "promo": "214",
+            "update_ms": "171",
+            "render_ms": "1650",
+            "ui_ms": "133",
+            "present_ms": "59"
+          },
+          {
+            "elapsed_ms": "2010",
+            "frames": "106",
+            "ticks": "60",
+            "fps": "52.7363",
+            "simulation_hz": "29.8507",
+            "location": "9",
+            "promo": "214",
+            "update_ms": "126",
+            "render_ms": "1621",
+            "ui_ms": "187",
+            "present_ms": "76"
+          },
+          {
+            "elapsed_ms": "2006",
+            "frames": "106",
+            "ticks": "60",
+            "fps": "52.8415",
+            "simulation_hz": "29.9103",
+            "location": "9",
+            "promo": "214",
+            "update_ms": "124",
+            "render_ms": "1612",
+            "ui_ms": "191",
+            "present_ms": "79"
+          },
+          {
+            "elapsed_ms": "2003",
+            "frames": "97",
+            "ticks": "60",
+            "fps": "48.4274",
+            "simulation_hz": "29.9551",
+            "location": "9",
+            "promo": "214",
+            "update_ms": "131",
+            "render_ms": "1632",
+            "ui_ms": "169",
+            "present_ms": "70"
+          },
+          {
+            "elapsed_ms": "2009",
+            "frames": "92",
+            "ticks": "60",
+            "fps": "45.7939",
+            "simulation_hz": "29.8656",
+            "location": "9",
+            "promo": "214",
+            "update_ms": "124",
+            "render_ms": "1657",
+            "ui_ms": "157",
+            "present_ms": "71"
+          },
+          {
+            "elapsed_ms": "2010",
+            "frames": "93",
+            "ticks": "61",
+            "fps": "46.2687",
+            "simulation_hz": "30.3483",
+            "location": "9",
+            "promo": "214",
+            "update_ms": "131",
+            "render_ms": "1653",
+            "ui_ms": "155",
+            "present_ms": "70"
+          },
+          {
+            "elapsed_ms": "2011",
+            "frames": "87",
+            "ticks": "60",
+            "fps": "43.2621",
+            "simulation_hz": "29.8359",
+            "location": "9",
+            "promo": "214",
+            "update_ms": "134",
+            "render_ms": "1654",
+            "ui_ms": "158",
+            "present_ms": "65"
+          },
+          {
+            "elapsed_ms": "2012",
+            "frames": "82",
+            "ticks": "60",
+            "fps": "40.7555",
+            "simulation_hz": "29.8211",
+            "location": "9",
+            "promo": "214",
+            "update_ms": "125",
+            "render_ms": "1659",
+            "ui_ms": "152",
+            "present_ms": "62"
+          }
+        ],
+        "trial_group": "Final build, shadows disabled",
+        "profile_totals_ms": {
+          "update_ms": 1523,
+          "render_ms": 20463,
+          "ui_ms": 1745,
+          "present_ms": 738
+        }
+      }
+    ]
+  },
+  "limits": [
+    "No physical controller tested; the SDL virtual-device lifecycle passed.",
+    "No hardware OpenGL driver or 120/144 Hz display tested.",
+    "No full playthrough or long-duration memory-soak test.",
+    "Rendering improvements do not rewrite game logic or remove driver/scene costs.",
+    "Modern feature patches apply only to Windows; Linux keeps the existing shared alarm mute and prior validation."
+  ]
+}

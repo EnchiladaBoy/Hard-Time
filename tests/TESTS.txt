@@ -16,6 +16,7 @@ Usage after building the engine and compiler:
 Windows (after python scripts/windows.py):
   python tests/run.py --all --post-flip --software-renderer
   python -m unittest discover -s tests -p test_windows_install.py -v
+  python tests/test_controller_windows.py
 
 Windows uses .work/windows and blitzcc64.exe by default, imports the selected
 Visual Studio x64 developer environment, and verifies native 64-bit PE output.
@@ -97,9 +98,30 @@ Windows --graphics additionally checks
     of a parented cube's movement; verify render interpolation leaves world
     transforms unchanged.
 
-The six Windows installer unit checks cover preservation of saves/photos and
+  overlay-smoke: exact pixel comparison after replaying text, images and shapes,
+    scaled HUD drawing, unchanged RNG, and invalidation after a font/image is freed.
+  audio-groups-smoke: live OpenAL gains for independent categories and preservation
+    of silent-but-playing channels, using an original generated tone fixture.
+  save-transaction-smoke: atomic-file abandonment, grouped writes, Windows path
+    case handling, grouped photos, relocation, directory-switch interruption,
+    and a locked target.
+  preferences-smoke: the actual prepared NativePreferences.bb code is compiled
+    with fixtures to check round trips, bounds, truncated files and backup recovery.
+  display-lifecycle-smoke: repeated mesh creation/freeing across five contexts,
+    live resizing/fullscreen with retained images, desktop dimensions and restore.
+
+The eight Windows installer unit checks cover preservation of saves/photos and
 original data, overlapping paths, unrelated destinations, binary architecture,
-installation locking and renderer mode mismatches.
+installation locking, renderer mode mismatches and recovery after relocation.
+The separate controller test compiles the production SDL joystick wrapper and
+uses a virtual SDL controller to test input, disconnect, stale handles, cleared
+buttons and reconnection. Physical controller mappings still require hardware.
+
+tests/benchmark_windows.py compares two executables using fresh disposable
+copies of a populated slot 2 and a synthetic 20-character hall. The original
+installation is read only. It keeps AI active, excludes a timed warm-up and
+records raw FPS/tick/profile rows. Results vary with AI activity and hardware;
+they do not establish a guaranteed refresh rate or cover a full playthrough.
 
 --fonts additionally checks
   font-smoke: ten load/render/free cycles of 95 printable ASCII characters

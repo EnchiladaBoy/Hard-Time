@@ -80,6 +80,30 @@ class InstallTests(unittest.TestCase):
             installer.install(self.binary, self.assets, self.destination, [], software=True)
         self.assertFalse((self.destination / 'software-renderer.txt').exists())
 
+    def test_update_recovers_interrupted_save_before_copying_original_data(self):
+        self.install()
+        data = self.destination / 'Data'
+        (data / 'example.dat').write_bytes(b'last committed save')
+        (self.destination / 'Data.transaction').write_text(
+            'Hard Time save transaction v2\nData\n', encoding='utf-8')
+        data.rename(self.destination / 'Data.previous')
+        relocated = self.root / 'relocated'
+        self.destination.rename(relocated)
+        self.destination = relocated
+        data = self.destination / 'Data'
+        self.install()
+        self.assertEqual((data / 'example.dat').read_bytes(), b'last committed save')
+
+    def test_update_refuses_unrecognized_recovery_marker(self):
+        self.install()
+        data = self.destination / 'Data'
+        data.rename(self.destination / 'Data.previous')
+        (self.destination / 'Data.transaction').write_text('unrecognized transaction\n')
+        with self.assertRaises(ValueError):
+            self.install()
+        self.assertFalse(data.exists())
+        self.assertEqual((self.destination / 'Data.previous/example.dat').read_bytes(), b'original')
+
 
 if __name__ == '__main__':
     unittest.main()

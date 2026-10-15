@@ -6,19 +6,42 @@ records diagnostics in logs. It prevents two copies from using these saves
 at once. Closing the game window saves active gameplay before exiting.
 
 Use the arrow keys and Enter in menus. During play, Esc saves and returns to
-the slot menu. P pauses, F11 toggles the FPS counter, and F12 saves a screenshot
-to Photo Album. Read the
-original Instruction Manual.txt and Survival Guide.txt for game controls.
+the slot menu when a conversation permits it. P pauses by default, F11 toggles
+the FPS counter, and F12 saves a screenshot to Photo Album. Read the original
+Instruction Manual.txt and Survival Guide.txt for game controls.
+
+Options > Modern Settings has three pages. Use left/right on PAGE to switch.
+  Display: desktop resolution, 1080p, 1440p and 4K; windowed or borderless
+  desktop; HUD size from 75% to 125%. Borderless uses the desktop resolution.
+  Apply display changes and confirm within 15 seconds, or they revert.
+  Controls / camera: mouse sensitivity, camera distance, pause on focus loss,
+  and a WASD preset (J attack, K defend/run, L throw/grab, E pick up).
+  Audio: independent music, sound effects and ambience volume. Alarm audio
+  remains disabled; its original gameplay events still work.
+
+Options > Redefine Keys remaps movement, all four actions and pause. Assigning
+an occupied key swaps its two actions. Escape/Enter, Alt, F11 and F12 remain
+reserved. Original controls remain the default. Controllers can be unplugged
+and reconnected during play. Losing window focus pauses play by default;
+press your pause key to resume after returning.
 
 Progress, options and character photographs are in Data. Screenshots are in
 Photo Album. To restore a backup, close the game, preserve the current Data
 folder elsewhere, then copy the selected backups/<date> folder as Data.
 Backups are retained until you remove them.
 
-Normal gameplay renders interpolated frames at the display's refresh rate
-when performance permits. Game speed stays at its original 30 updates per
-second. Menus, loading, pause and scripted dialogue retain their original
-timing. The FPS counter reports rendered frames and simulation updates.
+Game saves are staged before the complete Data folder is switched into place.
+Data.previous retains the last committed generation. The launcher recovers
+an interrupted directory switch automatically. Options use atomic writes
+and .bak recovery copies; damaged settings are preserved as .corrupt.dat.
+Resetting an occupied slot requires confirmation, with Cancel selected first.
+NativeOptions.dat stores modern preferences separately from legacy Options.dat.
+
+Gameplay, menus, pause and scripted dialogue render at the display's refresh
+rate when performance permits. Game speed and dialogue logic stay at their
+original 30 updates per second. Extra frames reuse recorded UI drawing, so
+they do not advance conversations or consume gameplay randomness. Loading
+feedback appears as assets load. The FPS counter reports frames and clock ticks.
 
 If software-renderer.txt is present, this installation uses Mesa llvmpipe on
 the CPU. This is useful when a modern OpenGL hardware driver is unavailable.

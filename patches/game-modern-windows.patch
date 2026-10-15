@@ -1,0 +1,1459 @@
+--- a/AI.bb
++++ b/AI.bb
+@@ -12,10 +12,10 @@
+  cThrow(cyc)=0 : cPickUp(cyc)=0
+  ;get keyboard input
+  If (pControl(cyc)=1 Or pControl(cyc)=3) And charBreakdown(pChar(cyc))=0
+-  If KeyDown(200) Then cUp(cyc)=1
+-  If KeyDown(208) Then cDown(cyc)=1
+-  If KeyDown(203) Then cLeft(cyc)=1
+-  If KeyDown(205) Then cRight(cyc)=1
++  If KeyDown(nativeKey(1)) Then cUp(cyc)=1
++  If KeyDown(nativeKey(2)) Then cDown(cyc)=1
++  If KeyDown(nativeKey(3)) Then cLeft(cyc)=1
++  If KeyDown(nativeKey(4)) Then cRight(cyc)=1
+   If KeyDown(keyAttack) Then cAttack(cyc)=1
+   If KeyDown(keyDefend) Then cDefend(cyc)=1
+   If KeyDown(keyThrow) Then cThrow(cyc)=1
+--- a/Credits.bb
++++ b/Credits.bb
+@@ -28,6 +28,7 @@
+ Next
+ ;frame rating
+ timer=CreateTimer(30)
++ClearOverlay
+ ;MAIN LOOP
+ logoX1#=-100 : logoX2#=900
+ go=0 : gotim=0 : keytim=20
+@@ -36,6 +37,7 @@
+  Cls
+  frames=NativeWaitTimer(timer)
+  For framer=1 To frames
++  CaptureWorld
+ 	
+ 	;PROCESS     
+     gotim=gotim+1
+@@ -47,14 +49,14 @@
+ 	
+  UpdateWorld
+  Next
+- RenderWorld 1
++ NativeRender()
+ 
+  ;DISPLAY
+  TileImage gTile
+  DrawImage gLogo(1),rX#(logoX1#),rY#(300)
+  DrawImage gLogo(2),rX#(logoX2#),rY#(300)
+ 
+- Flip
++ NativePresent()
+  ;screenshot (F12)
+  If KeyHit(88) Then Screenshot()
+ 
+@@ -62,6 +64,7 @@
+ ;leave
+ Loader("Please Wait","Loading Game")
+ sTheme=LoadSound("Sound/Theme.wav")
++SoundGroup sTheme,1
+ LoopSound sTheme
+ chTheme=PlaySound(sTheme)
+ musicVol#=1.0
+@@ -88,6 +91,7 @@
+ EntityColor fader,0,0,0
+ ;frame rating
+ timer=CreateTimer(30)
++ClearOverlay
+ ;MAIN LOOP
+ scroll#=0 : gamma=0
+ go=0 : gotim=0 : keytim=20
+@@ -96,6 +100,7 @@
+  Cls
+  frames=NativeWaitTimer(timer)
+  For framer=1 To frames
++  CaptureWorld
+ 	
+ 	;timers
+ 	keytim=keytim-1
+@@ -152,8 +157,8 @@
+  ;final logo
+  DrawImage gMDickie,rX#(400),rY#(y+scroll#)  
+ 
+- RenderWorld 1
+- Flip
++ NativeRender()
++ NativePresent()
+  ;screenshot (F12)
+  If KeyHit(88) Then Screenshot()
+ 
+@@ -172,6 +177,7 @@
+ Function Outro()
+ ;frame rating
+ timer=CreateTimer(30)
++ClearOverlay
+ ;MAIN LOOP
+ colour=0
+ logoX1#=400 : logoX2#=400
+@@ -181,6 +187,7 @@
+  Cls
+  frames=NativeWaitTimer(timer)
+  For framer=1 To frames
++  CaptureWorld
+ 	
+ 	;PROCESS     
+     gotim=gotim+1
+@@ -201,7 +208,7 @@
+ 	
+  UpdateWorld
+  Next
+- RenderWorld 1
++ NativeRender()
+ 
+  ;DISPLAY
+  TileImage gTile
+@@ -221,7 +228,7 @@
+  DrawImage gLogo(2),rX#(logoX2#),rY#(300)
+  DrawImage gMDickie,rX#(400),rY#(515)
+ 
+- Flip
++ NativePresent()
+  ;screenshot (F12)
+  If KeyHit(88) Then Screenshot()
+ 
+@@ -243,6 +250,7 @@
+ EntityTexture FindChild(world,"Sign01"),tSign(9),0,2
+ EntityTexture FindChild(world,"Net"),tNet
+ sAtmos=LoadSound("Sound/Ambience/Yard.wav")
++ SoundGroup sAtmos,2
+ ;camera
+ cam=CreateCamera()
+ CameraViewport cam,0,0,GraphicsWidth(),GraphicsHeight()
+@@ -336,6 +344,7 @@
+ endFate(10)=0
+ ;frame ratings
+ timer=CreateTimer(30)
++ClearOverlay
+ SeedRnd(MilliSecs())
+ ;MAIN LOOP
+ promoTim=0 : page=1
+@@ -345,6 +354,7 @@
+  Cls
+  frames=NativeWaitTimer(timer)
+  For framer=1 To frames
++  CaptureWorld
+ 	
+ 	;counters
+ 	keytim=keytim-1
+@@ -404,7 +414,7 @@
+ 	
+  UpdateWorld
+  Next  
+- RenderWorld 1
++ NativeRender()
+ 
+  ;DISPLAY
+  ;introduce widescreen
+@@ -709,9 +719,9 @@
+    scriptB$="gangs and now rules like a king..."
+   EndIf 
+   SetFont font(4)
+-  If GraphicsWidth()<800 Then SetFont font(3)
+-  If GraphicsWidth()>800 Then SetFont font(5)
+-  If GraphicsWidth()>1024 Then SetFont font(6)
++
++
++
+   OutlineStraight(scriptA$,rX#(x)+90,rY#(520),30,30,30,250,250,250)
+   OutlineStraight(scriptB$,rX#(x)+90,rY#(560),30,30,30,250,250,250)
+  EndIf
+@@ -719,7 +729,7 @@
+  ;mask shaky start
+  If gotim=<0 Then Loader("Please Wait","Leaving Prison") 
+ 
+- Flip
++ NativePresent()
+  ;screenshot (F12)
+  If KeyHit(88) Then Screenshot()
+ 
+--- a/Crimes.bb
++++ b/Crimes.bb
+@@ -13,6 +13,7 @@
+  EntityTexture FindChild(world,"Crowd"+Dig$(count,10)),tCrowd,Rnd(0,3)
+ Next
+ sAtmos=LoadSound("Sound/Ambience/Crowd.wav")
++ SoundGroup sAtmos,2
+ ;camera
+ cam=CreateCamera()
+ CameraViewport cam,0,0,GraphicsWidth(),GraphicsHeight()
+@@ -110,6 +111,7 @@
+ ;frame ratings
+ Loader("Please Wait","Preparing Court Case")
+ timer=CreateTimer(30)
++ClearOverlay
+ SeedRnd(MilliSecs())
+ ;MAIN LOOP
+ foc=1 : oldfoc=foc
+@@ -119,6 +121,7 @@
+  Cls
+  frames=NativeWaitTimer(timer)
+  For framer=1 To frames
++  CaptureWorld
+ 	
+ 	;counters
+ 	keytim=keytim-1
+@@ -164,7 +167,7 @@
+  If pFoc(5)>0 Then PointHead(5,pLimb(pFoc(5),1)) 
+ 
+  Next  
+- RenderWorld 1
++ NativeRender()
+ 
+  ;DISPLAY
+  ;reset expressions
+@@ -185,9 +188,9 @@
+  EndIf 
+  ;determine font
+  SetFont font(4)
+- If GraphicsWidth()<800 Then SetFont font(3)
+- If GraphicsWidth()>800 Then SetFont font(5)
+- If GraphicsWidth()>1024 Then SetFont font(6)
++
++
++
+  ;OPENING LINE
+  If promoStage=0 And promoTim>25 And promoTim<325
+   Speak(5,2) : pFoc(5)=2
+@@ -1046,7 +1049,7 @@
+  ;mask shaky start
+  If gotim=<0 Then Loader("Please Wait","Preparing Court Case") 
+ 
+- Flip
++ NativePresent()
+  ;screenshot (F12)
+  If KeyHit(88) Then Screenshot()
+ 
+--- a/Data.bb
++++ b/Data.bb
+@@ -8,9 +8,9 @@
+ 
+ ;SAVE OPTIONS
+ Function SaveOptions()
+- file=WriteFile("Data/Options.dat")
++ file=WriteFileAtomic("Data/Options.dat")
+   ;preferences
+-  WriteInt file,optRes
++  WriteInt file,NativeClamp(optRes,1,5)
+   WriteInt file,optPopulation
+   WriteInt file,optFog
+   WriteInt file,optShadows
+@@ -31,10 +31,12 @@
+    WriteString file,gamName$(count)
+   Next
+  CloseFile(file)
++ NativeSaveSettings()
+ End Function
+ 
+ ;LOAD OPTIONS
+ Function LoadOptions()
++ If NativeRecoverOptions()=0 Then Return
+  file=ReadFile("Data/Options.dat")
+   ;preferences
+   optRes=ReadInt(file)
+@@ -500,10 +502,13 @@
+   If randy=<1 Then kitState(cyc)=1
+  Next
+  ;save generation
++ BeginSaveTransaction "Data"
+  SaveProgress()
+  SaveChars()
+  SavePhotos()
+  SaveItems()
++ SaveOptions()
++ CommitSaveTransaction
+ End Function
+ 
+ ;GENERATE CHARACTER
+--- a/Editor.bb
++++ b/Editor.bb
+@@ -48,6 +48,7 @@
+ Next 
+ ;frame rating
+ timer=CreateTimer(30)
++ClearOverlay
+ ;MAIN LOOP
+ foc=8 : oldfoc=foc : page=1
+ go=0 : gotim=0 : keytim=20
+@@ -57,6 +58,7 @@
+  screenCall=0
+  frames=NativeWaitTimer(timer)
+  For framer=1 To frames
++  CaptureWorld
+ 	
+ 	;counters
+ 	keytim=keytim-1
+@@ -214,7 +216,7 @@
+ 
+  UpdateWorld
+  Next
+- RenderWorld 1
++ NativeRender()
+ 
+  ;DISPLAY
+  DrawImage gLogo(3),rX#(570),rY#(65)
+@@ -287,7 +289,7 @@
+  ;Outline("camYA: "+camYA#,rX#(50),rY#(165),0,0,0,155,200,250)
+  ;Outline("camZA: "+camZA#,rX#(50),rY#(180),0,0,0,155,200,250) 
+ 
+- Flip
++ NativePresent()
+  ;screenshot (F12)
+  If KeyHit(88) Then Screenshot()
+ 
+@@ -299,10 +301,13 @@
+ charPhoto(char)=CreateImage(rX#(300),rY#(200))
+ GrabImage charPhoto(char),rX#(210),rY#(220-charHeight(char))
+ ResizeImage charPhoto(char),150,100
++BeginSaveTransaction "Data"
+ SaveImage(charPhoto(char),"Data/Slot0"+slot+"/Photos/Photo"+Dig$(char,100)+".bmp")
+ MaskImage charPhoto(char),255,0,255
+ charSnapped(char)=1
+ SaveChars()
++SaveOptions()
++CommitSaveTransaction
+ ;free entities
+ FreeTimer timer
+ FreeEntity world
+--- a/Functions.bb
++++ b/Functions.bb
+@@ -73,6 +73,7 @@
+ 
+ ;RESOLUTION X FIX
+ Function rX#(x#)
++ If nativeUi Then Return x#
+  factor#=800.0/Float(GraphicsWidth())
+  newX#=x#/factor#
+  Return newX#
+@@ -80,6 +81,7 @@
+ 
+ ;RESOLUTION Y FIX
+ Function rY#(y#)
++ If nativeUi Then Return y#
+  factor#=600.0/Float(GraphicsHeight())
+  newY#=y#/factor#
+  Return newY#
+--- a/Gameplay.bb
++++ b/Gameplay.bb
+@@ -11,6 +11,7 @@
+ AppTitle "Hard Time"              
+ Include "Texts.bb"
+ Include "Values.bb"
++Include "Modern.bb"
+ Include "Data.bb"
+ Include "Functions.bb"
+ Include "Menus.bb"
+@@ -30,12 +31,14 @@
+ ;INITIATE ENGINE 
+ Global nativeQuit=0
+ Global nativeHighFps=(GetEnv$("HARDTIME_ORIGINAL_FPS")<>"1")
+-Global nativeTween#=1.0,nativeSmooth=0
++Global nativeTween#=1.0
+ Global nativeShowFps=(GetEnv$("HARDTIME_SHOW_FPS")="1")
+ Global nativeFpsLog=0,nativeFpsStart=0,nativeFpsFrames=0,nativeFpsTicks=0
+ Global nativeFps#=0,nativeTickRate#=0,nativeHudSeed=1
+ AppCloseEvents True
++RecoverSaveTransaction "Data"
+ LoadOptions()
++NativeLoadSettings()
+ ChangeResolution(optRes,0)
+ SetBuffer BackBuffer()
+ AutoMidHandle True
+@@ -63,22 +66,35 @@
+ End 
+ 
+ ;Let every screen unwind through its normal save and cleanup path.
+-Function NativeWaitTimer(timer,smooth=0)
+- Local ticks
+- If smooth<>nativeSmooth Then CaptureWorld
+- nativeSmooth=smooth
+- If smooth
++Function NativeWaitTimer(timer)
++ Local ticks=0,focused
++ NativeEndUI()
++ If nativeHighFps
+   ticks=PollTimer(timer)
++  While ticks=0
++   If AppCloseRequested() Or (KeyDown(56) And KeyDown(45)) Then nativeQuit=1 : go=-1 : Return 0
++   If OverlayReady()
++    nativeTween#=TimerTween#(timer)
++    NativeDrawWorld()
++    ReplayOverlay()
++    NativePresent()
++   Else
++    Delay 1
++   EndIf
++   ticks=PollTimer(timer)
++  Wend
+   nativeTween#=TimerTween#(timer)
+  Else
+   ticks=WaitTimer(timer)
+   nativeTween#=1.0
+  EndIf
+- If AppCloseRequested() Or (KeyDown(56) And KeyDown(45))
+-  nativeQuit=1
+-  go=-1
+-  Return 0
+- EndIf
++ focused=AppFocused()
++ If screen=50 And nativeAutoPause And nativeFocused And focused=0 Then gamPause=1 : keytim=10
++ If nativeDiscardTicks Then ticks=1 : nativeDiscardTicks=0
++ nativeFocused=focused
++ If AppCloseRequested() Or (KeyDown(56) And KeyDown(45)) Then nativeQuit=1 : go=-1 : Return 0
++ nativeFpsTicks=nativeFpsTicks+ticks
++ nativeLogicStart=MilliSecs()
+  Return ticks
+ End Function
+ 
+@@ -91,10 +107,11 @@
+   nativeFps#=1000.0*nativeFpsFrames/elapsed
+   nativeTickRate#=1000.0*nativeFpsTicks/elapsed
+   If nativeFpsLog
+-   WriteLine nativeFpsLog,elapsed+","+nativeFpsFrames+","+nativeFpsTicks+","+nativeFps#+","+nativeTickRate#+","+gamLocation(slot)+","+gamPromo
++   WriteLine nativeFpsLog,elapsed+","+nativeFpsFrames+","+nativeFpsTicks+","+nativeFps#+","+nativeTickRate#+","+gamLocation(slot)+","+gamPromo+","+nativeLogicMs+","+nativeRenderMs+","+nativeUiMs+","+nativePresentMs
+   EndIf
+   nativeFpsStart=MilliSecs()
+   nativeFpsFrames=0 : nativeFpsTicks=0
++  nativeLogicMs=0 : nativeRenderMs=0 : nativeUiMs=0 : nativePresentMs=0
+  EndIf
+ End Function
+ 
+@@ -103,12 +120,13 @@
+  ;main menus
+  If request=1 Then MainMenu()
+  If request=2 Then Options()
+- If request=3 Then RedefineKeys()
++ If request=3 Then NativeKeyboardMenu()
+  If request=4 Then RedefineGamepad()
+  If request=5 Then SlotSelect()
+  If request=6 Then Credits()
+  If request=7 Then Outro()
+  If request=8 Then EditSelect()
++ If request=9 Then NativeSettingsMenu()
+  ;3D scenes
+  If request=50 Then Gameplay()
+  If request=51 Then Editor()
+@@ -188,11 +206,13 @@
+ SeedRnd(MilliSecs())
+ Loader("Please Wait","Finalizing World")
+ timer=CreateTimer(30)
++ClearOverlay
+ nativeFpsStart=MilliSecs() : nativeFpsFrames=0 : nativeFpsTicks=0
+ nativeFps#=0 : nativeTickRate#=0
++nativeLogicMs=0 : nativeRenderMs=0 : nativeUiMs=0 : nativePresentMs=0
+ If GetEnv$("HARDTIME_FPS_LOG")="1"
+  nativeFpsLog=WriteFile("frame-times.csv")
+- If nativeFpsLog Then WriteLine nativeFpsLog,"elapsed_ms,frames,ticks,fps,simulation_hz,location,promo"
++ If nativeFpsLog Then WriteLine nativeFpsLog,"elapsed_ms,frames,ticks,fps,simulation_hz,location,promo,update_ms,render_ms,ui_ms,present_ms"
+ EndIf
+ ;MAIN LOOP
+ zoom#=1.0
+@@ -200,10 +220,10 @@
+ While go=0
+ 
+  Cls
+- ;Dialogue drawing also changes game state; retain its legacy cadence.
+- frames=NativeWaitTimer(timer,nativeHighFps And gamPromo=0 And gotim>0 And gamPause=0)
++ ;Logic and scripted dialogue update at 30 Hz; cached drawing fills display frames.
++ frames=NativeWaitTimer(timer)
+  For framer=1 To frames
+-  If nativeHighFps Then CaptureWorld
++  CaptureWorld
+ 	
+   ;COUNTERS
+   keytim=keytim-1
+@@ -279,7 +299,7 @@
+   
+   ;ppppppppppppppppppppppp PAUSE LOOP pppppppppppppppppppppppppppppppp
+   ;pause toggle
+-  If KeyDown(25) And gotim>20 And keytim=0
++  If KeyDown(nativeKey(9)) And gotim>20 And keytim=0
+    PlaySound sMenuSelect : keytim=20
+    If gamPause=1 Then gamPause=0 Else gamPause=1
+   EndIf
+@@ -533,7 +553,7 @@
+  Next
+ 
+  Next 
+- RenderWorld nativeTween#
++ NativeRender()
+  
+  ;DISPLAY
+  ;DrawImage gLogo(3),rX#(180),rY#(560)
+@@ -545,13 +565,17 @@
+   ;Extra HUD draws must not consume gameplay randomness or flicker faster.
+   Local hudResumeSeed=RndSeed()
+   If frames>0 Then nativeHudSeed=hudResumeSeed Else SeedRnd(nativeHudSeed)
++  NativeBeginHUD(0,0)
+   DisplayStatus(gamChar(slot),72,42)
+   If frames=0 Then SeedRnd(hudResumeSeed)
++  NativeBeginHUD(800,0)
+   DisplayTime(727,30)
++  NativeBeginHUD(0,600)
+   If OnComputer(gamPlayer(slot)) And pAnim(gamPlayer(slot))=102 And pState(gamPlayer(slot))=109 And pAnimTim(gamPlayer(slot))>10
+    DisplayFile(gamFile,100,530)
+   EndIf
+  EndIf
++ NativeBeginUI()
+  ;diagnostics
+  ;If KeyDown(56)
+   ;SetFont fontNumber
+@@ -583,7 +607,7 @@
+  If gamPause=1
+   DrawOption(-1,rX#(400),rY#(300),"PAUSED","")
+   SetFont font(1)
+-  Outline("(Press 'P' to resume play)",rX#(400),rY#(300)+30,0,0,0,255,255,255)
++  Outline("(Press '"+Key$(nativeKey(9))+"' to resume play)",rX#(400),rY#(300)+30,0,0,0,255,255,255)
+  EndIf
+  ;mask shaky start
+  If gotim=<0 Then Loader("Please Wait","Finalizing World")
+@@ -593,8 +617,7 @@
+   SetFont font(1)
+   Outline("FPS: "+Int(nativeFps#)+"  Simulation: "+Int(nativeTickRate#)+" Hz",rX#(400),rY#(575),0,0,0,255,255,255)
+  EndIf
+- Flip
+- NativeFrameStats(frames)
++ NativePresent()
+  ;screenshot (F12)
+  If KeyHit(88) Then Screenshot()
+  ;save preview shot
+@@ -761,6 +784,7 @@
+  Next
+ EndIf
+ ;save & exit
++BeginSaveTransaction "Data"
+ If go=-1 
+  gamName$(slot)=CellName$(gamChar(slot))+": "+charName$(gamChar(slot))
+  ResizeImage gamPhoto(slot),150,100
+@@ -777,8 +801,9 @@
+ If go=2 Then screen=52
+ If go=3 Then gamEnded=1 : screen=53
+ If charHealth(gamChar(slot))=0 Then gamEnded=1 : gamName$(slot)="" : screen=6
+-;Persist the slot label alongside its progress, including on window close.
++;Commit progress, labels and every photo together, including on window close.
+ SaveOptions()
++CommitSaveTransaction
+ End Function
+ 
+ ;-----------------------------------------------------------------
+--- a/Menus.bb
++++ b/Menus.bb
+@@ -8,6 +8,7 @@
+ Function MainMenu()
+ ;frame rating
+ timer=CreateTimer(30)
++ClearOverlay
+ ;MAIN LOOP
+ foc=1 : oldfoc=foc
+ go=0 : gotim=0 : keytim=20
+@@ -16,6 +17,7 @@
+  Cls
+  frames=NativeWaitTimer(timer)
+  For framer=1 To frames
++  CaptureWorld
+ 	
+ 	;timers
+ 	keytim=keytim-1
+@@ -42,7 +44,7 @@
+ 	
+  UpdateWorld
+  Next
+- RenderWorld 1
++ NativeRender()
+ 
+  ;DISPLAY
+  TileImage gTile
+@@ -54,7 +56,7 @@
+  DrawOption(3,rX#(400),rY#(185),"CREDITS","")
+  DrawOption(4,rX#(400),rY#(415),"<<< EXIT <<<","")  
+ 
+- Flip
++ NativePresent()
+  ;screenshot (F12)
+  If KeyHit(88) Then Screenshot()
+ 
+@@ -76,14 +78,16 @@
+ Function Options()
+ ;frame rating
+ timer=CreateTimer(30)
++ClearOverlay
+ ;MAIN LOOP
+-foc=9 : oldfoc=foc
++foc=10 : oldfoc=foc
+ go=0 : gotim=0 : keytim=20
+ While go=0
+ 
+  Cls
+  frames=NativeWaitTimer(timer)
+  For framer=1 To frames
++  CaptureWorld
+ 	
+ 	;timers
+ 	keytim=keytim-1
+@@ -96,9 +100,9 @@
+ 	 If KeyDown(1) Then go=-1
+ 	 ;proceed
+ 	 If KeyDown(28) Or ButtonPressed()
+-	  If foc<6 Then foc=9 : keytim=10 
+-	  If foc=>7 And foc=<8 Then go=1
+-	  If foc=9 And keytim=0 Then go=-1 
++	  If foc<6 Then foc=10 : keytim=10
++	  If foc=>7 And foc=<9 Then go=1
++	  If foc=10 And keytim=0 Then go=-1
+ 	 EndIf
+ 	EndIf
+ 	
+@@ -107,8 +111,8 @@
+ 	 ;highlight options
+ 	 If KeyDown(200) Or JoyYDir()=-1 Then foc=foc-1 : PlaySound sMenuSelect : keytim=6
+ 	 If KeyDown(208) Or JoyYDir()=1 Then foc=foc+1 : PlaySound sMenuSelect : keytim=6
+-	 If foc<1 Then foc=9
+-	 If foc>9 Then foc=1
++	 If foc<1 Then foc=10
++	 If foc>10 Then foc=1
+ 	 ;browse left
+ 	 If KeyDown(203) Or JoyXDir()=-1
+ 	  If foc=1 Then optRes=optRes-1 : PlaySound sMenuBrowse : keytim=6
+@@ -130,7 +134,7 @@
+ 	EndIf
+ 	;check limits
+ 	If optRes<1 Then optRes=1
+-	If optRes>5 Then optRes=5 
++	If optRes>9 Then optRes=9
+     If optPopulation<40 Then optPopulation=40
+ 	If optPopulation>100 Then optPopulation=100
+     If optFog<0 Then optFog=1
+@@ -144,15 +148,15 @@
+ 	
+  UpdateWorld
+  Next
+- RenderWorld 1
++ NativeRender()
+ 
+  ;DISPLAY
+  TileImage gTile
+  DrawImage gLogo(3),rX#(400),rY#(50)
+  ;options
+  SetFont font(1)
+- x=400 : y=120 : spacer=53
+- DrawOption(1,rX#(400),rY#(y),"Resolution",textResX$(optRes)+" x "+textResY$(optRes)) : y=y+spacer
++ x=400 : y=95 : spacer=45
++ DrawOption(1,rX#(400),rY#(y),"Resolution",NativeResolutionName$(optRes)) : y=y+spacer
+  DrawOption(2,rX#(400),rY#(y),"Population",optPopulation+" Characters") : y=y+(spacer+5)
+  DrawOption(3,rX#(400),rY#(y),"Fog Effect",textOnOff$(optFog)) : y=y+spacer
+  DrawOption(4,rX#(400),rY#(y),"Shadows",textShadows$(optShadows)) : y=y+spacer 
+@@ -160,20 +164,24 @@
+  DrawOption(6,rX#(400),rY#(y),"Gore",textGore$(optGore)) : y=y+(spacer+5)
+  DrawOption(7,rX#(400),rY#(y),"REDEFINE KEYS","") : y=y+spacer
+  DrawOption(8,rX#(400),rY#(y),"REDEFINE GAMEPAD","") : y=y+(spacer+5)
+- DrawOption(9,rX#(400),rY#(y),"<<< BACK <<<","")
+-
+- Flip
++ DrawOption(9,rX#(400),rY#(y),"MODERN SETTINGS","") : y=y+spacer
++ DrawOption(10,rX#(400),rY#(y),"<<< BACK <<<","")
++
++ NativePresent()
+  ;screenshot (F12)
+  If KeyHit(88) Then Screenshot()
+ 
+ Wend
+ ;leave
+ FreeTimer timer
++If optRes<>nativeAppliedRes Then NativeDisplayApply()
++SaveOptions()
+ If go=1 Then PlaySound sMenuGo Else PlaySound sMenuBack 
+ If go=1 
+  If foc=7 Then screen=3
+  If foc=8 Then screen=4
+- If foc=9 Then screen=1
++ If foc=9 Then screen=9
++ If foc=10 Then screen=1
+ EndIf
+ If go=-1 Then screen=1
+ End Function
+@@ -184,6 +192,7 @@
+ Function RedefineKeys()
+ ;frame rating
+ timer=CreateTimer(30)
++ClearOverlay
+ ;MAIN LOOP
+ foc=6 : oldfoc=foc : screenCall=0
+ go=0 : gotim=0 : keytim=20
+@@ -193,6 +202,7 @@
+ 
+  frames=NativeWaitTimer(timer)
+  For framer=1 To frames
++  CaptureWorld
+ 	
+ 	;timers
+ 	keytim=keytim-1
+@@ -243,7 +253,7 @@
+ 	
+  UpdateWorld
+  Next
+- RenderWorld 1
++ NativeRender()
+ 
+  ;DISPLAY
+  TileImage gTile
+@@ -265,7 +275,7 @@
+  If screenCall=3 Then DrawOption(3,rX#(400),rY#(y+120),"Throw / Grab","Press New Key")
+  If screenCall=4 Then DrawOption(4,rX#(400),rY#(y+180),"Pick Up / Drop","Press New Key")
+ 
+- Flip
++ NativePresent()
+  ;screenshot (F12)
+  If KeyHit(88) Then Screenshot()
+ 
+@@ -282,6 +292,7 @@
+ Function RedefineGamepad()
+ ;frame rating
+ timer=CreateTimer(30)
++ClearOverlay
+ ;MAIN LOOP
+ foc=6 : oldfoc=foc : screenCall=0
+ go=0 : gotim=0 : keytim=20
+@@ -291,6 +302,7 @@
+ 
+  frames=NativeWaitTimer(timer)
+  For framer=1 To frames
++  CaptureWorld
+ 	
+ 	;timers
+ 	keytim=keytim-1
+@@ -341,7 +353,7 @@
+ 	
+  UpdateWorld
+  Next
+- RenderWorld 1
++ NativeRender()
+ 
+  ;DISPLAY
+  TileImage gTile
+@@ -363,7 +375,7 @@
+  If screenCall=3 Then DrawOption(3,rX#(400),rY#(y+120),"Throw / Grab","Press New Button")
+  If screenCall=4 Then DrawOption(4,rX#(400),rY#(y+180),"Pick Up / Drop","Press New Button")
+ 
+- Flip
++ NativePresent()
+  ;screenshot (F12)
+  If KeyHit(88) Then Screenshot()
+ 
+@@ -380,6 +392,7 @@
+ Function SlotSelect()
+ ;frame rating
+ timer=CreateTimer(30)
++ClearOverlay
+ ;MAIN LOOP
+ If slot=>1 And slot=<3 Then foc=slot Else foc=1
+ go=0 : gotim=0 : keytim=20
+@@ -388,6 +401,7 @@
+  Cls
+  frames=NativeWaitTimer(timer)
+  For framer=1 To frames
++  CaptureWorld
+ 	
+ 	;timers
+ 	keytim=keytim-1
+@@ -413,7 +427,14 @@
+ 	 If foc>4 Then foc=1
+ 	 ;reset
+ 	 If foc=>1 And foc=<3
+-	  If KeyDown(14) Or KeyDown(210) Then gamName$(foc)="" : PlaySound sTrash : keytim=10
++	  If KeyDown(14) Or KeyDown(210)
++       If gamName$(foc)<>"" And NativeConfirm("Reset this save slot?",gamName$(foc)+" - the previous save is retained in backups.")
++        BeginSaveTransaction "Data"
++        gamName$(foc)="" : SaveOptions() : CommitSaveTransaction
++        PlaySound sTrash
++       EndIf
++       keytim=20
++      EndIf
+ 	  If KeyDown(18) And gamName$(foc)<>"" Then PlaySound sComputer : go=2
+ 	  If KeyDown(207) And gamName$(foc)<>"" Then PlaySound sDoor(1) : go=3 
+ 	 EndIf
+@@ -421,7 +442,7 @@
+ 	
+  UpdateWorld
+  Next
+- RenderWorld 1
++ NativeRender()
+ 
+  ;DISPLAY
+  TileImage gTile
+@@ -443,7 +464,7 @@
+  Next
+  DrawOption(4,rX#(400),rY#(415),"<<< BACK <<<","")   
+ 
+- Flip
++ NativePresent()
+  ;screenshot (F12)
+  If KeyHit(88) Then Screenshot()
+ 
+@@ -490,6 +511,7 @@
+ Function EditSelect()
+ ;frame rating
+ timer=CreateTimer(30)
++ClearOverlay
+ ;MAIN LOOP
+ foc=1 : oldfoc=foc
+ go=0 : gotim=0 : keytim=20
+@@ -498,6 +520,7 @@
+  Cls
+  frames=NativeWaitTimer(timer)
+  For framer=1 To frames
++  CaptureWorld
+ 	
+ 	;timers
+ 	keytim=keytim-1
+@@ -533,7 +556,7 @@
+ 	
+  UpdateWorld
+  Next
+- RenderWorld 1
++ NativeRender()
+ 
+  ;DISPLAY
+  TileImage gTile
+@@ -548,7 +571,7 @@
+  DrawOption(1,rX#(400),rY#(185),"Character",gamChar(0)+". "+charName$(gamChar(0))) 
+  DrawOption(2,rX#(400),rY#(415),"<<< BACK <<<","")   
+ 
+- Flip
++ NativePresent()
+  ;screenshot (F12)
+  If KeyHit(88) Then Screenshot()
+ 
+@@ -629,6 +652,8 @@
+ Function AssignButton(current)
+  value=28
+  While value=28
++  If AppCloseRequested() Then nativeQuit=1 : go=-1 : Return current
++  Delay 1
+   For v=1 To 12
+    If JoyDown(v)=1 And keytim=0 Then value=v : screenCall=0 : PlaySound sMenuSelect : gotim=0 : keytim=20
+   Next
+@@ -639,7 +664,8 @@
+ 
+ ;STANDARD LOADING DISPLAY
+ Function Loader(scriptA$,scriptB$)
+- Cls
++ EndOverlay : ClearOverlay
++ Cls : NativeBeginUI()
+   ;logos
+   TileImage gTile
+   DrawMainLogo(rX#(400),rY#(300))
+@@ -648,14 +674,14 @@
+   DrawOption(-1,rX#(400),rY#(415),scriptA$,scriptB$)
+   ;map reference
+   If screen=50 Or screen=52 Then DisplayMap(400,125)
+- Flip
++ NativePresent()
+ End Function
+ 
+ ;QUICK LOADING DISPLAY
+ Function QuickLoader(x#,y#,scriptA$,scriptB$)
+  SetFont font(1)
+  DrawOption(-1,x#,y#,scriptA$,scriptB$)
+- Flip
++ NativePresent()
+ End Function
+ 
+ ;DISPLAY MAP
+@@ -699,23 +725,26 @@
+ End Function
+ 
+ ;CHANGE RESOLUTION
+-Function ChangeResolution(resolution,task) ;0=pre-game, 1=during game
+- ;assess preferences
+- width=Int(textResX$(resolution))
+- height=Int(textResY$(resolution))
+- If GfxMode3DExists(width,height,32)=0 Then width=800 : height=600 : optRes=2
+- ;make transition?
+- If width<>GraphicsWidth() Or height<>GraphicsHeight()
++Function ChangeResolution(resolution,task)
++ Local width=Int(textResX$(resolution)),height=Int(textResY$(resolution)),mode=2
++ If resolution=6 Or nativeBorderless Then width=DesktopWidth() : height=DesktopHeight()
++ If nativeBorderless Then mode=4
++ If width<640 Or height<480 Then width=800 : height=600 : optRes=2
++ If width<>GraphicsWidth() Or height<>GraphicsHeight() Or nativeAppliedMode<>nativeBorderless
+   If task>0 Then Loader("Please Wait","Adjusting Resolution")
+-  Graphics3D width,height,32,2
+-  If task>0 ;restore media
+-   LoadImages()
+-   Loader("Please Wait","Restoring Media")
+-   LoadPhotos()
+-   LoadTextures()
+-   LoadWeaponData()
++  NativeEndUI() : ClearOverlay
++  Local resized=0
++  If task>0 Then resized=ResizeGraphics(width,height,nativeBorderless)
++  If resized=0
++   Graphics3D width,height,32,mode
++   SetBuffer BackBuffer()
++   If task>0
++    LoadImages() : Loader("Please Wait","Restoring Media")
++    LoadPhotos() : LoadTextures() : LoadWeaponData()
++   EndIf
+   EndIf
+  EndIf
++ nativeAppliedRes=optRes : nativeAppliedMode=nativeBorderless
+ End Function
+ 
+ ;GET SCREENSHOT
+--- /dev/null
++++ b/Modern.bb
+@@ -0,0 +1,237 @@
++; Modern display, controls and settings menus.
++Include "NativePreferences.bb"
++
++Function NativeBeginUI(extra#=1.0)
++ Local scale#=GraphicsWidth()/800.0
++ If GraphicsHeight()/600.0<scale# Then scale#=GraphicsHeight()/600.0
++ scale#=scale#*extra#
++ nativeUi=1
++ DrawTransform scale#,scale#,(GraphicsWidth()-800*scale#)/2,(GraphicsHeight()-600*scale#)/2
++End Function
++
++Function NativeBeginHUD(anchorX#,anchorY#)
++ Local scale#=GraphicsWidth()/800.0,extra#=nativeHud/100.0
++ If GraphicsHeight()/600.0<scale# Then scale#=GraphicsHeight()/600.0
++ nativeUi=1
++ DrawTransform scale#*extra#,scale#*extra#,(GraphicsWidth()-800*scale#)/2+anchorX#*scale#*(1-extra#),(GraphicsHeight()-600*scale#)/2+anchorY#*scale#*(1-extra#)
++End Function
++
++Function NativeEndUI()
++ nativeUi=0 : DrawTransform 1,1,0,0
++End Function
++
++Function NativeDrawWorld()
++ Local started=MilliSecs()
++ RenderWorld nativeTween#
++ If nativeFpsLog Then nativeRenderMs=nativeRenderMs+MilliSecs()-started
++ nativeUiStart=MilliSecs()
++End Function
++
++Function NativeRender()
++ If nativeFpsLog Then nativeLogicMs=nativeLogicMs+MilliSecs()-nativeLogicStart
++ NativeDrawWorld()
++ BeginOverlay
++ NativeBeginUI()
++End Function
++
++Function NativePresent()
++ EndOverlay
++ NativeEndUI()
++ Local started=MilliSecs()
++ If nativeFpsLog Then nativeUiMs=nativeUiMs+started-nativeUiStart
++ Flip
++ If nativeFpsLog Then nativePresentMs=nativePresentMs+MilliSecs()-started
++ NativeFrameStats(0)
++ If KeyHit(88) Then Screenshot()
++End Function
++
++Function NativeConfirm(message$,detail$,seconds=0)
++ Local dialogTimer=CreateTimer(30),choice=0,done=0,accepted=0,elapsed,start=MilliSecs(),oldFocus=foc,previousAxis=0,axis
++ ClearOverlay : FlushKeys : FlushJoy
++ While done=0
++  NativeWaitTimer(dialogTimer)
++  If AppCloseRequested() Then nativeQuit=1 : go=-1 : done=1
++  elapsed=MilliSecs()-start
++  If seconds>0 And elapsed>=seconds*1000 Then done=1
++  If elapsed>350
++   axis=JoyXDir()
++   If KeyHit(203) Or KeyHit(205) Or (axis<>0 And previousAxis=0) Then choice=1-choice
++   previousAxis=axis
++   If KeyHit(1) Then done=1
++   If KeyHit(28) Or JoyHit(buttAttack) Then accepted=choice : done=1
++  EndIf
++  Cls : NativeRender() : TileImage gTile
++  SetFont font(3) : Outline(message$,400,200,0,0,0,255,255,255)
++  SetFont font(1) : Outline(detail$,400,245,0,0,0,230,230,230)
++  foc=choice
++  DrawOption(0,275,330,"CANCEL","") : DrawOption(1,525,330,"CONFIRM","")
++  If seconds>0 Then Outline("Reverting in "+(seconds-elapsed/1000)+" seconds",400,390,0,0,0,255,220,120)
++  NativePresent()
++ Wend
++ FreeTimer dialogTimer : foc=oldFocus : ClearOverlay : FlushKeys : FlushJoy
++ nativeDiscardTicks=1
++ If nativeQuit Then Return 0
++ Return accepted
++End Function
++
++Function NativeDisplayApply()
++ Local previousRes=nativeAppliedRes,previousMode=nativeAppliedMode
++ ChangeResolution(optRes,1)
++ If NativeConfirm("Keep this display mode?","Left / right to choose, Enter to confirm",15)=0
++  optRes=previousRes : nativeBorderless=previousMode
++  ChangeResolution(optRes,1)
++ EndIf
++ SaveOptions()
++End Function
++
++Function NativeSettingsMenu()
++ Local page=1,choiceTimer=CreateTimer(30),direction,label$,value$,row
++ foc=1 : go=0 : keytim=15
++ ClearOverlay
++ While go=0
++  frames=NativeWaitTimer(choiceTimer)
++  For framer=1 To frames
++   CaptureWorld : keytim=NativeClamp(keytim-1,0,20)
++   If keytim=0
++    If KeyDown(1) Then go=-1
++    If KeyDown(200) Or JoyYDir()=-1 Then foc=foc-1 : keytim=6
++    If KeyDown(208) Or JoyYDir()=1 Then foc=foc+1 : keytim=6
++    foc=NativeClamp(foc,1,8)
++    direction=0
++    If KeyDown(203) Or JoyXDir()=-1 Then direction=-1
++    If KeyDown(205) Or JoyXDir()=1 Then direction=1
++    If direction<>0
++     keytim=6
++     If foc=1 Then page=NativeClamp(page+direction,1,3)
++     If page=1
++      If foc=2 Then optRes=NativeClamp(optRes+direction,1,9)
++      If foc=3 Then nativeBorderless=1-nativeBorderless
++      If foc=4 Then nativeHud=NativeClamp(nativeHud+direction*5,75,125)
++     EndIf
++     If page=2
++      If foc=2 Then nativeSensitivity=NativeClamp(nativeSensitivity+direction*25,25,300)
++      If foc=3 Then nativeDistance=NativeClamp(nativeDistance+direction*10,50,150)
++      If foc=4 Then nativeAutoPause=1-nativeAutoPause
++     EndIf
++     If page=3
++      If foc=2 Then nativeMusic=NativeClamp(nativeMusic+direction*5,0,100)
++      If foc=3 Then nativeEffects=NativeClamp(nativeEffects+direction*5,0,100)
++      If foc=4 Then nativeAmbience=NativeClamp(nativeAmbience+direction*5,0,100)
++      NativeApplyAudio()
++     EndIf
++    EndIf
++    If KeyDown(28) Or ButtonPressed()
++     keytim=15
++     If foc=8 Then go=-1
++     If page=2 And foc=5 Then NativeKeyPreset(1) : PlaySound sMenuSelect
++     If page=2 And foc=6 Then go=1
++     If foc=7
++      If page=1
++       NativeDisplayApply()
++      Else
++       SaveOptions()
++      EndIf
++     EndIf
++    EndIf
++   EndIf
++  Next
++  Cls : NativeRender() : TileImage gTile
++  SetFont font(3) : Outline("MODERN SETTINGS",400,48,0,0,0,255,255,255)
++  label$="Display" : If page=2 Then label$="Controls / camera"
++  If page=3 Then label$="Audio"
++  DrawOption(1,400,110,"PAGE",label$)
++  If page=1
++   DrawOption(2,400,165,"Resolution",NativeResolutionName$(optRes))
++   value$="Windowed" : If nativeBorderless Then value$="Borderless desktop"
++   DrawOption(3,400,220,"Window mode",value$)
++   DrawOption(4,400,275,"HUD size",nativeHud+"%")
++   SetFont font(1)
++   Outline("Borderless uses your desktop resolution.",400,330,0,0,0,230,230,230)
++   Outline("Display changes have a 15-second revert timer.",400,365,0,0,0,230,230,230)
++  EndIf
++  If page=2
++   DrawOption(2,400,165,"Mouse sensitivity",nativeSensitivity+"%")
++   DrawOption(3,400,220,"Camera distance",nativeDistance+"%")
++   DrawOption(4,400,275,"Pause on focus loss",textOnOff$(nativeAutoPause))
++   DrawOption(5,400,330,"USE WASD PRESET","")
++   DrawOption(6,400,385,"REMAP ALL KEYS","")
++  EndIf
++  If page=3
++   DrawOption(2,400,165,"Music",nativeMusic+"%")
++   DrawOption(3,400,220,"Sound effects",nativeEffects+"%")
++   DrawOption(4,400,275,"Ambience",nativeAmbience+"%")
++   SetFont font(1) : Outline("Alarm sound: disabled",400,350,0,0,0,230,230,230)
++  EndIf
++  DrawOption(7,400,440,"APPLY / SAVE","") : DrawOption(8,400,500,"<<< BACK <<<","")
++  SetFont font(1) : Outline("Up / down: select   Left / right: change   Enter: apply",400,555,0,0,0,230,230,230)
++  NativePresent()
++ Wend
++ FreeTimer choiceTimer
++ optRes=nativeAppliedRes : nativeBorderless=nativeAppliedMode
++ SaveOptions()
++ If go=1 Then screen=3 Else screen=2
++End Function
++
++Function NativeResolutionName$(res)
++ If res=6 Then Return "Desktop ("+DesktopWidth()+" x "+DesktopHeight()+")"
++ Return textResX$(res)+" x "+textResY$(res)
++End Function
++
++Function NativeKeyboardMenu()
++ Local choiceTimer=CreateTimer(30),binding=0,pressed,n,previous,label$
++ foc=1 : go=0 : keytim=15 : ClearOverlay
++ While go=0
++  frames=NativeWaitTimer(choiceTimer)
++  For framer=1 To frames
++   CaptureWorld : keytim=NativeClamp(keytim-1,0,20)
++   If binding>0
++    If KeyHit(1) Then binding=0 : keytim=15
++    If keytim=0 And binding>0
++     For pressed=2 To 211
++      If NativeValidKey(pressed) And KeyHit(pressed)
++       previous=nativeKey(binding)
++       For n=1 To 9
++        If nativeKey(n)=pressed Then nativeKey(n)=previous
++       Next
++       nativeKey(binding)=pressed : NativeSyncKeys()
++       binding=0 : keytim=15 : Exit
++      EndIf
++     Next
++    EndIf
++   Else
++    If keytim=0
++     If KeyDown(1) Then go=-1
++     If KeyDown(200) Or JoyYDir()=-1 Then foc=foc-1 : keytim=5
++     If KeyDown(208) Or JoyYDir()=1 Then foc=foc+1 : keytim=5
++     foc=NativeClamp(foc,1,12)
++     If KeyDown(28) Or ButtonPressed()
++      keytim=15 : FlushKeys
++      If foc<=9 Then binding=foc
++      If foc=10 Then NativeKeyPreset(0)
++      If foc=11 Then NativeKeyPreset(1)
++      If foc=12 Then go=-1
++     EndIf
++    EndIf
++   EndIf
++  Next
++  Cls : NativeRender() : TileImage gTile
++  SetFont font(3) : Outline("KEYBOARD CONTROLS",400,38,0,0,0,255,255,255)
++  For n=1 To 12
++   If foc=n Then Color 45,75,100 : Rect 190,66+(n-1)*38,420,34,1
++   SetFont font(2)
++   If n<=9
++    label$=Key$(nativeKey(n)) : If label$="" Then label$="Key "+nativeKey(n)
++    If binding=n Then label$="Press a key..."
++    OutlineStraight(nativeKeyName$(n),205,83+(n-1)*38,0,0,0,255,255,255)
++    Outline(label$,510,83+(n-1)*38,0,0,0,255,255,255)
++   Else
++    label$="Original controls" : If n=11 Then label$="WASD + J / K / L / E"
++    If n=12 Then label$="<<< BACK <<<"
++    Outline(label$,400,83+(n-1)*38,0,0,0,255,255,255)
++   EndIf
++  Next
++  SetFont font(1) : Outline("Enter: rebind   Esc: cancel   Duplicate keys swap assignments",400,555,0,0,0,230,230,230)
++  NativePresent()
++ Wend
++ FreeTimer choiceTimer : SaveOptions() : screen=2
++End Function
+--- /dev/null
++++ b/NativePreferences.bb
+@@ -0,0 +1,166 @@
++; Native Windows preferences. Legacy Options.dat and slot formats stay readable.
++Global nativeBorderless=0,nativeAppliedMode=-1,nativeAppliedRes=2,nativeHud=100
++Global nativeSensitivity=100,nativeDistance=100,nativeAutoPause=1
++Global nativeMusic=100,nativeEffects=100,nativeAmbience=100
++Global nativeUi=0,nativeFocused=1,nativeSettingsRecovered=0,nativeDiscardTicks=0
++Global nativeLogicStart=0,nativeUiStart=0,nativeLogicMs=0,nativeRenderMs=0,nativeUiMs=0,nativePresentMs=0
++Dim nativeKey(9),nativeKeyName$(9),nativeSetting(18)
++nativeKey(1)=200 : nativeKey(2)=208 : nativeKey(3)=203 : nativeKey(4)=205
++nativeKey(5)=30 : nativeKey(6)=44 : nativeKey(7)=31 : nativeKey(8)=45 : nativeKey(9)=25
++nativeKeyName$(1)="Move forward" : nativeKeyName$(2)="Move backward"
++nativeKeyName$(3)="Move left" : nativeKeyName$(4)="Move right"
++nativeKeyName$(5)="Attack / shoot" : nativeKeyName$(6)="Defend / run"
++nativeKeyName$(7)="Throw / grab" : nativeKeyName$(8)="Pick up / drop" : nativeKeyName$(9)="Pause"
++
++Function NativeClamp(value,low,high)
++ If value<low Then Return low
++ If value>high Then Return high
++ Return value
++End Function
++
++Function NativeValidKey(value)
++ If value<2 Or value>211 Then Return 0
++ If value=28 Or value=56 Or value=184 Or value=87 Or value=88 Then Return 0
++ Return 1
++End Function
++
++Function NativeSyncKeys()
++ keyAttack=nativeKey(5) : keyDefend=nativeKey(6)
++ keyThrow=nativeKey(7) : keyPickUp=nativeKey(8)
++End Function
++
++Function NativeKeyPreset(wasd)
++ nativeKey(1)=200 : nativeKey(2)=208 : nativeKey(3)=203 : nativeKey(4)=205
++ nativeKey(5)=30 : nativeKey(6)=44 : nativeKey(7)=31 : nativeKey(8)=45 : nativeKey(9)=25
++ If wasd
++  nativeKey(1)=17 : nativeKey(2)=31 : nativeKey(3)=30 : nativeKey(4)=32
++  nativeKey(5)=36 : nativeKey(6)=37 : nativeKey(7)=38 : nativeKey(8)=18
++ EndIf
++ NativeSyncKeys()
++End Function
++
++Function NativeValidOptions(path$)
++ Local size=FileSize(path$),stream,n,length,value,valid=1
++ If size<68 Or size>260 Then Return 0
++ stream=ReadFile(path$)
++ If stream=0 Then Return 0
++ For n=1 To 14
++  value=ReadInt(stream)
++  If n=1 And (value<0 Or value>5) Then valid=0
++  If n=2 And (value<40 Or value>100) Then valid=0
++  If n=3 And (value<0 Or value>1) Then valid=0
++  If (n=4 Or n=5) And (value<0 Or value>2) Then valid=0
++  If n=6 And (value<0 Or value>3) Then valid=0
++  If n>=7 And n<=10 And (value<1 Or value>255) Then valid=0
++  If n>=11 And (value<1 Or value>255) Then valid=0
++ Next
++ For n=1 To 3
++  If FilePos(stream)+4>size Then valid=0 : Exit
++  length=ReadInt(stream)
++  If length<0 Or length>64 Or FilePos(stream)+length>size Then valid=0 : Exit
++  SeekFile stream,FilePos(stream)+length
++ Next
++ If FilePos(stream)<>size Then valid=0
++ CloseFile stream
++ Return valid
++End Function
++
++Function NativeRecoverOptions()
++ If NativeValidOptions("Data/Options.dat") Then Return 1
++ nativeSettingsRecovered=1
++ If FileType("Data/Options.dat")=1 Then CopyFile "Data/Options.dat","Data/Options.corrupt.dat"
++ If NativeValidOptions("Data/Options.dat.bak")
++  CopyFile "Data/Options.dat.bak","Data/Options.dat"
++  Return 1
++ EndIf
++ If NativeValidOptions("Data.previous/Options.dat")
++  CopyFile "Data.previous/Options.dat","Data/Options.dat"
++  Return 1
++ EndIf
++ ; Retain discoverable slots even if both settings copies are damaged.
++ Local n,stream,character,path$
++ For n=1 To 3
++  path$="Data/Slot0"+n+"/Progress.dat"
++  If FileSize(path$)>100
++   stream=ReadFile(path$)
++   If stream
++    ReadInt(stream) : character=ReadInt(stream) : CloseFile stream
++    If character>=1 And character<=200 Then gamName$(n)="Recovered slot "+n
++   EndIf
++  EndIf
++ Next
++ Return 0
++End Function
++
++Function NativeReadSettings(path$)
++ Local stream,n,checksum=1213484356,valid=1,other
++ If FileSize(path$)<>84 Then Return 0
++ stream=ReadFile(path$)
++ If stream=0 Then Return 0
++ If ReadInt(stream)<>1213484356 Or ReadInt(stream)<>1 Then CloseFile stream : Return 0
++ For n=1 To 18
++  nativeSetting(n)=ReadInt(stream)
++  checksum=checksum Xor nativeSetting(n)
++ Next
++ If ReadInt(stream)<>checksum Then valid=0
++ CloseFile stream
++ If nativeSetting(1)<1 Or nativeSetting(1)>9 Then valid=0
++ If nativeSetting(2)<0 Or nativeSetting(2)>1 Then valid=0
++ If nativeSetting(3)<75 Or nativeSetting(3)>125 Then valid=0
++ If nativeSetting(4)<25 Or nativeSetting(4)>300 Then valid=0
++ If nativeSetting(5)<50 Or nativeSetting(5)>150 Then valid=0
++ If nativeSetting(6)<0 Or nativeSetting(6)>1 Then valid=0
++ For n=7 To 9
++  If nativeSetting(n)<0 Or nativeSetting(n)>100 Then valid=0
++ Next
++ For n=10 To 18
++  If NativeValidKey(nativeSetting(n))=0 Then valid=0
++  For other=10 To n-1
++   If nativeSetting(n)=nativeSetting(other) Then valid=0
++  Next
++ Next
++ Return valid
++End Function
++
++Function NativeLoadSettings()
++ nativeKey(5)=keyAttack : nativeKey(6)=keyDefend : nativeKey(7)=keyThrow : nativeKey(8)=keyPickUp
++ Local valid=NativeReadSettings("Data/NativeOptions.dat"),n
++ If valid=0
++  If FileType("Data/NativeOptions.dat")=1
++   nativeSettingsRecovered=1
++   CopyFile "Data/NativeOptions.dat","Data/NativeOptions.corrupt.dat"
++  EndIf
++  valid=NativeReadSettings("Data/NativeOptions.dat.bak")
++  If valid Then CopyFile "Data/NativeOptions.dat.bak","Data/NativeOptions.dat"
++ EndIf
++ If valid
++  optRes=nativeSetting(1) : nativeBorderless=nativeSetting(2) : nativeHud=nativeSetting(3)
++  nativeSensitivity=nativeSetting(4) : nativeDistance=nativeSetting(5) : nativeAutoPause=nativeSetting(6)
++  nativeMusic=nativeSetting(7) : nativeEffects=nativeSetting(8) : nativeAmbience=nativeSetting(9)
++  For n=1 To 9 : nativeKey(n)=nativeSetting(n+9) : Next
++ EndIf
++ NativeSyncKeys() : NativeApplyAudio()
++End Function
++
++Function NativeSaveSettings()
++ Local stream,n,checksum=1213484356
++ nativeSetting(1)=optRes : nativeSetting(2)=nativeBorderless : nativeSetting(3)=nativeHud
++ nativeSetting(4)=nativeSensitivity : nativeSetting(5)=nativeDistance : nativeSetting(6)=nativeAutoPause
++ nativeSetting(7)=nativeMusic : nativeSetting(8)=nativeEffects : nativeSetting(9)=nativeAmbience
++ For n=1 To 9 : nativeSetting(n+9)=nativeKey(n) : Next
++ stream=WriteFileAtomic("Data/NativeOptions.dat")
++ WriteInt stream,1213484356 : WriteInt stream,1
++ For n=1 To 18
++  WriteInt stream,nativeSetting(n) : checksum=checksum Xor nativeSetting(n)
++ Next
++ WriteInt stream,checksum : CloseFile stream
++End Function
++
++Function NativeApplyAudio()
++ AudioGroupVolume 0,nativeEffects/100.0
++ AudioGroupVolume 1,nativeMusic/100.0
++ AudioGroupVolume 2,nativeAmbience/100.0
++ ; The alarm's base gain remains zero, independently of all category sliders.
++ SoundVolume sAlarm,0
++End Function
++
+--- a/Promos.bb
++++ b/Promos.bb
+@@ -528,9 +528,9 @@
+  EndIf 
+  ;determine font
+  SetFont font(4)
+- If GraphicsWidth()<800 Then SetFont font(3)
+- If GraphicsWidth()>800 Then SetFont font(5)
+- If GraphicsWidth()>1024 Then SetFont font(6)
++
++
++
+  ;1. GUARD CONFRONTS ABOUT ILLEGAL WEAPON
+  If gamPromo=1
+   ;intro
+@@ -4794,7 +4794,10 @@
+ End Function
+ 
+ ;TAKE PHOTO
+-Function TakePhoto(char) 
++Function TakePhoto(char)
++ Local wasUi=nativeUi
++ nativeUi=0
++ If charPhoto(char)>0 Then FreeImage charPhoto(char)
+  charPhoto(char)=CreateImage(rY#(300)+(rY#(300)/2),rY#(300))
+  photoX#=415 : photoY#=280
+  If screen=52 And char=101 Then photoX#=450 : photoY#=280
+@@ -4805,6 +4808,7 @@
+  ResizeImage charPhoto(char),150,100
+  MaskImage charPhoto(char),255,0,255
+  charSnapped(char)=1
++ nativeUi=wasUi
+ End Function
+ 
+ ;SHOW PHOTO IN PROMO
+--- a/Texts.bb
++++ b/Texts.bb
+@@ -127,13 +127,17 @@
+ textOnOff$(0)="Off"
+ textOnOff$(1)="On"
+ ;resolution
+-Dim textResX$(5),textResY$(5)
++Dim textResX$(9),textResY$(9)
+ textResX$(0)="320" : textResY$(0)="240"
+ textResX$(1)="640" : textResY$(1)="480"
+ textResX$(2)="800" : textResY$(2)="600"
+ textResX$(3)="1024" : textResY$(3)="768"
+ textResX$(4)="1280" : textResY$(4)="1024"
+ textResX$(5)="1280" : textResY$(5)="800"
++textResX$(6)="Desktop" : textResY$(6)="Desktop"
++textResX$(7)="1920" : textResY$(7)="1080"
++textResX$(8)="2560" : textResY$(8)="1440"
++textResX$(9)="3840" : textResY$(9)="2160"
+ ;gore
+ Dim textGore$(5)
+ textGore$(0)="None"
+--- a/World.bb
++++ b/World.bb
+@@ -40,6 +40,7 @@
+   EntityTexture FindChild(world,"Sign02"),tSign(gamLocation(slot)),0,2
+   no_chairs=0 : no_beds=20 : no_doors=1
+   sAtmos=LoadSound("Sound/Ambience/Quiet.wav")
++ SoundGroup sAtmos,2
+  EndIf
+  ;exercise yard
+  If gamLocation(slot)=2
+@@ -54,6 +55,7 @@
+   Next
+   no_chairs=6 : no_beds=0 : no_doors=1
+   sAtmos=LoadSound("Sound/Ambience/Yard.wav")
++ SoundGroup sAtmos,2
+  EndIf
+  ;study
+  If gamLocation(slot)=4
+@@ -64,6 +66,7 @@
+   EntityFX FindChild(world,"Screen"),9
+   no_chairs=5 : no_beds=0 : no_doors=2
+   sAtmos=LoadSound("Sound/Ambience/Quiet.wav")
++ SoundGroup sAtmos,2
+  EndIf
+  ;hospital
+  If gamLocation(slot)=6
+@@ -78,6 +81,7 @@
+   Next
+   no_chairs=9 : no_beds=3 : no_doors=2
+   sAtmos=LoadSound("Sound/Ambience/Hall.wav")
++ SoundGroup sAtmos,2
+  EndIf
+  ;kitchen
+  If gamLocation(slot)=8
+@@ -92,6 +96,7 @@
+   Next
+   no_chairs=45 : no_beds=0 : no_doors=1
+   sAtmos=LoadSound("Sound/Ambience/Canteen.wav")
++ SoundGroup sAtmos,2
+  EndIf
+  ;main hall
+  If gamLocation(slot)=9
+@@ -116,6 +121,7 @@
+   Next
+   no_chairs=8 : no_beds=0 : no_doors=8
+   sAtmos=LoadSound("Sound/Ambience/Hall.wav")
++ SoundGroup sAtmos,2
+  EndIf
+  ;workshop
+  If gamLocation(slot)=10
+@@ -137,6 +143,7 @@
+    If kitState(cyc)=0 Then HideEntity kit(cyc)
+   Next
+   sAtmos=LoadSound("Sound/Ambience/Quiet.wav")
++ SoundGroup sAtmos,2
+  EndIf
+  ;toilets
+  If gamLocation(slot)=11
+@@ -154,6 +161,7 @@
+   Next
+   no_chairs=5 : no_beds=0 : no_doors=1
+   sAtmos=LoadSound("Sound/Ambience/Bathroom.wav")
++ SoundGroup sAtmos,2
+  EndIf
+  ;reset screen
+  wOldScreen=-1
+@@ -424,8 +432,8 @@
+   ;Next
+  ;EndIf
+  If screen=50
+-  camMouseX#=MouseXSpeed()/2
+-  camMouseY#=-(MouseYSpeed()/2)
++  camMouseX#=MouseXSpeed()*nativeSensitivity/200.0
++  camMouseY#=-(MouseYSpeed()*nativeSensitivity/200.0)
+   If camMouseX#<>0 Or camMouseY#<>0 Then camType=0 : camTim=100
+   MoveMouse rX#(400),rY#(300)
+  EndIf
+@@ -458,6 +466,7 @@
+    camTY#=pY#(camFoc)+40
+    If pGrappler(camFoc)>0 Then zoom#=70 Else zoom#=-70
+    If InsideCell(pX#(camFoc),pY#(camFoc),pZ#(camFoc))>0 Then zoom#=zoom#/2 : camTY#=camTY#-5
++   zoom#=zoom#*nativeDistance/100.0
+    MoveEntity dummy,0,0,zoom#
+    camTX#=EntityX(dummy)
+    camTZ#=EntityZ(dummy) 

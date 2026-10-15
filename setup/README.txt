@@ -9,8 +9,8 @@ Player flow
   Setup's Play button and the shortcuts use Play Hard Time.exe.
 
 No player build tools
-  Setup and the launcher are C# programs targeting the .NET Framework already
-  included with Windows 10/11. The game itself remains the native x64 build.
+  Setup and the launcher are native Rust programs using Windows system DLLs.
+  Players need no Rust or .NET installation. The game remains the native x64 build.
   The single EXE embeds the game, OpenAL, Mesa, 7-Zip and dependency notices.
   No original assets, original executable or player data are embedded.
   Local source selection works offline. Automatic download needs a connection.
@@ -31,7 +31,8 @@ Safety and recovery
   Program replacements are staged with a durable rollback journal. Ordinary
   failures roll back. Rerunning setup recovers interrupted commits; a completed
   commit marker protects a successful update during interrupted cleanup.
-  Cancellation is available before the short commit phase.
+  Cancellation is available before the short commit phase. Network operations
+  have five-second timeouts; cancellation is checked between them.
   Automatic graphics uses an isolated OpenGL probe on a new install and keeps
   the existing renderer on an update. Explicit renderer changes remove stale
   app-local Mesa files transactionally. GPU/driver behavior beyond this probe
@@ -43,28 +44,42 @@ Safety and recovery
   only that process, not the Windows system locale.
 
 Build (maintainers only, after scripts/windows.py)
+  cargo fmt --manifest-path setup/rust/Cargo.toml --check
+  cargo clippy --locked --manifest-path setup/rust/Cargo.toml --all-targets -- -D warnings
   python scripts/package-windows.py
   python tests/test_setup_windows.py
   python tests/test_setup_windows.py --original-installer C:/path/hardtime_setup.exe
 
   Outputs: dist/Hard-Time-Setup.exe, .sha256 and .manifest.json
-  The Windows Framework64 csc.exe compiler is used; no NuGet/.NET SDK restore.
+  The pinned Rust MSVC toolchain and Windows C++ build tools/SDK are required.
+  setup/rust is a separate Cargo workspace; Cargo.lock pins its dependencies.
+  The repository's .cargo/config.toml links the CRT statically.
   Python and 7-Zip are packaging dependencies only. The bundled 7-Zip version
   is downloaded and SHA256-pinned in scripts/windows-toolchain.json.
   --binary and --output select an alternate compiled game and destination.
   Rebuild setup after changing the game binary, launcher, notices or player guide.
 
 GUI/download smoke test (interactive Windows session)
-  powershell -NoProfile -ExecutionPolicy Bypass -File tests/test_setup_gui.ps1 -DownloadOriginal
+  python tests/test_setup_rust_gui.py --download-original
   Uses an isolated installation, captures the real setup controls, clicks Install
-  and Play, and leaves that disposable game open for visual checking. Close it
-  normally afterwards. It never creates personal Desktop/Start menu shortcuts.
+  and Cancel, retries, then clicks Play and closes its disposable game normally.
+  It never creates personal Desktop/Start menu shortcuts. Python's standard
+  library is sufficient; an interactive Windows desktop is required.
+  --original-installer selects a local installer instead of the live download.
+
+Previous installer compatibility
+  The public setup-v0.1.1-preview release used C#. New builds use Rust and can
+  update those installations or recover their existing setup/save journals.
+  To check an actual previous-release upgrade locally:
+  python tests/test_setup_windows.py --legacy-setup C:/previous/Hard-Time-Setup.exe
 
 CLI for automation
   Hard-Time-Setup.exe --install --download-original --destination C:/Games/HardTime
   Hard-Time-Setup.exe --install --source C:/path/hardtime_setup.exe --destination C:/Games/HardTime --renderer software --no-shortcuts --result C:/path/result.json
   Renderer: auto (default), gpu, software. Exit code 0 means successful install;
-  --result writes success details or an error. Without arguments the GUI opens.
+  --result writes success details or an error and must be outside the original
+  and installed game folders. Without arguments the GUI opens. See
+  rust/README.txt for the Rust package format and implementation notes.
 
 GitHub packaging
   .github/workflows/windows-setup.yml builds from pinned source, runs the setup

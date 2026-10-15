@@ -29,7 +29,7 @@
 
 **The new game runtime is being built in Rust.** The first preview renders nine original locations through Bevy and Direct3D 12, with a free-flying camera, display-synchronized rendering, an independent 30 Hz clock, read-only save inspection and screenshots.
 
-This is an **environment explorer**. Characters, collision, combat, AI, missions, dialogue, audio and save-writing still need to be ported. The [Windows setup below](#windows-setup) installs the existing playable BASIC/Blitz3D build. The setup and launcher remain in C# until the Rust game is ready for them.
+This is an **environment explorer**. Characters, collision, combat, AI, missions, dialogue, audio and save-writing still need to be ported. The [Windows setup below](#windows-setup) installs the existing playable BASIC/Blitz3D build. The [installer and Play launcher have also been rewritten in Rust](setup/rust/README.txt), using the same asset acquisition and save-preservation flow.
 
 With the pinned Rust toolchain and Windows C++ build tools installed:
 
@@ -83,7 +83,16 @@ Find the new options under **Options → Modern Settings** and **Options → Red
 
 <p align="center"><img src="docs/images/setup.png" alt="Hard Time Setup with automatic original-game download, destination, graphics selection and shortcut options" width="700"></p>
 
-**Windows 10 (1903 or newer) / Windows 11 x64.** Python, Git, CMake, Visual Studio and a separate 7-Zip installation are unnecessary for players. Setup uses Windows' included .NET Framework. It installs into your user folder without administrator rights; local-file installation works offline. Non-English usernames and installation paths are supported.
+**Windows 10 (1903 or newer) / Windows 11 x64.** Python, Git, CMake, Visual Studio and a separate 7-Zip installation are unnecessary for players. It installs into your user folder without administrator rights; local-file installation works offline. Non-English usernames and installation paths are supported.
+
+**Rust installer:** New source builds produce a native Rust setup and launcher using Windows system DLLs, with no .NET runtime requirement. The linked `setup-v0.1.1-preview` download above is the earlier C# release. [Windows setup workflow artifacts](https://github.com/EnchiladaBoy/Hard-Time/actions/workflows/windows-setup.yml) provide new builds; the [setup guide](setup/README.txt) covers building and updating existing installations.
+
+<details>
+<summary>See the new Rust installer</summary>
+
+<p align="center"><img src="docs/images/setup-rust.png" alt="The native Rust Hard Time installer with automatic download, installation folder and graphics choices" width="700"></p>
+
+</details>
 
 **Updating?** Close the game, reopen setup and choose the same native installation folder. Saves, photos and backups are preserved. Setup can recover an interrupted update, and the Play launcher backs up saves before each run.
 
@@ -119,7 +128,7 @@ python scripts/install-windows.py --assets "C:\Games\HardTimeOriginal" --destina
 
 This Python installer example uses the system's GPU driver. Add `--software-renderer` for Mesa. With the Python workflow, use a new destination when switching renderer modes, then copy your `Data` and `Photo Album` folders with both games closed. The graphical setup handles renderer changes in place.
 
-To produce the standalone installer after building:
+To produce the Rust standalone installer after building, also install the repository's pinned Rust MSVC toolchain:
 
 ```powershell
 python scripts/package-windows.py
@@ -172,6 +181,8 @@ These are [recorded local results](provenance/windows-improvements-validation.js
 
 The [setup validation record](provenance/windows-setup-validation.json) also covers downloading the original from MDickie, installing through the GUI, launching the game and creating a save backup. The [Windows setup workflow](.github/workflows/windows-setup.yml) packages tagged releases from source and checks installation with synthetic asset fixtures.
 
+The [Rust installer validation](provenance/rust-setup-validation.json) records its separate recovery, package, previous-release upgrade and GUI checks. The Rust installer continues to install the complete compatibility game.
+
 <details>
 <summary><strong>Run the checks and inspect the evidence</strong></summary>
 
@@ -202,7 +213,7 @@ The crowd measurements keep AI active, so camera and dialogue changes prevent a 
 | [`rust/`](rust) | New Rust core, save/model readers and Bevy environment preview. |
 | [`patches/`](patches) | Game, engine and dependency corrections. |
 | [`scripts/`](scripts) | Pinned source preparation, builds and local installation. |
-| [`setup/`](setup) | Standalone Windows installer and Play launcher in C#. |
+| [`setup/`](setup) | Native Rust Windows installer and Play launcher. |
 | [`tests/`](tests) | Runtime regressions, installer checks and profiling tools. |
 | [`tools/`](tools) | Read-only analysis of the original Blitz3D module. |
 | [`provenance/`](provenance) | Source revisions, hashes and validation records. |

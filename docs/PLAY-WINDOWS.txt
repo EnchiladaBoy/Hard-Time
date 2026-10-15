@@ -55,9 +55,10 @@ existing installation's renderer; on a fresh installation it checks for an
 OpenGL 3.3 driver and falls back to compatibility graphics when unavailable.
 
 SETUP AND UPDATES
-Hard-Time-Setup.exe includes the compiled game and support files. Windows
-10 (1903+) / 11 x64 supplies its .NET Framework runtime. Players do not need Python,
-Git, CMake, Visual Studio, or a separate 7-Zip installation.
+Hard-Time-Setup.exe includes the compiled game and support files. The installer
+and Play launcher are native Rust programs for Windows 10 (1903+) / 11 x64.
+Players do not need Rust, .NET, Python, Git, CMake, Visual Studio, or a separate
+7-Zip installation.
 
 Setup can download the original 2007 installer directly from MDickie's site,
 or use your local installer / complete original game folder. It checks the

@@ -19,3 +19,6 @@ Original Hard Time and the game artwork depicted are Copyright (C) Mat Dickie
 2007. The screenshots are documentation only. See ../../NOTICE.txt.
 setup.png is rendered from the actual C# setup window with example paths.
 The setup interface and its small icon are drawn from repository code.
+
+setup-rust.png captures the actual replacement Rust installer, with illustrative
+source and installation paths. It is a direct window capture, without retouching.

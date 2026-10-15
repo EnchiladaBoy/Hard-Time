@@ -1,0 +1,53 @@
+{
+  "recorded_at_utc": "2026-10-15T14:19:33.881094+00:00",
+  "scope": "Rust installer and bundled Rust Play launcher; installs the full compatibility game",
+  "host": "Windows-11-10.0.26200-SP0",
+  "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+  "artifact": {
+    "path": "dist/Hard-Time-Setup-Rust.exe",
+    "sha256": "0b4cf0310c925388f17400b109bbe6114670831e066498bf8be7f114b9e539f6",
+    "bytes": 29259916,
+    "default_output": "dist/Hard-Time-Setup.exe"
+  },
+  "inputs": {
+    "original_installer_sha256": "72d4f6a2e9c22a77f63b2f90730cb71bb742ecf9c1782000f9a5e4cb641c6ca1",
+    "legacy_local_setup_sha256": "2ddce00bd919f31e100d6876b7199c81c12864968e5e5524c451a6720a3e1220",
+    "legacy_published_setup_sha256": "fdfa0774458da0aae8f840282b155873339f45e547f6ba38255b79f6fb87c816",
+    "game_sha256": "3063b451eb82bdbbe72a658f9c8daa5a857d4bf682eb2fc82a246e7b679a7516",
+    "cargo_lock_sha256": "ec00035fdbe7f95e7900a204f5ef5f8a6e2d3a0e8a6aa8481777b264677f3d52"
+  },
+  "checks": {
+    "cargo_fmt": "passed",
+    "clippy_all_targets_deny_warnings": "passed",
+    "rust_recovery_tests": 17,
+    "package_integration_groups": 12,
+    "csharp_to_rust_upgrade": "passed for the previous local C# build and the SHA256-verified setup-v0.1.1-preview public release; existing save and photo hashes unchanged",
+    "real_original_installer_extraction": "passed; installer extracted, never executed",
+    "windows_only_path": true,
+    "unicode_installation_and_launcher_paths": true,
+    "gui": {
+      "download_tested": true,
+      "play_button": true,
+      "backup_matches_seed_data": true,
+      "game_closed_cleanly": true,
+      "cancel_and_retry": true,
+      "renderer": "software"
+    },
+    "gui_evidence": ".work/validation/setup/gui-rust-6f3ff768",
+    "payload_integrity_and_notices": "passed",
+    "rust_dependency_notice_packages": 62,
+    "no_original_assets_in_setup": true,
+    "static_crt": true,
+    "direct_imports_system_dlls_only": true
+  },
+  "presentation": {
+    "screenshot": "docs/images/setup-rust.png",
+    "method": "Actual final Rust setup window; illustrative paths; no image retouching"
+  },
+  "limitations": [
+    "Windows 11 with Mesa software rendering was tested; Windows 10, physical GPUs and display scaling need separate checks.",
+    "Unsigned preview. The public setup-v0.1.1-preview release is the preceding C# build.",
+    "The Rust installer installs the existing full game, not the separate Rust environment preview.",
+    "The existing game F12/Mesa rendering limitation remains documented in the player guide."
+  ]
+}

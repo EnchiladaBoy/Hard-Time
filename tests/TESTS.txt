@@ -114,18 +114,23 @@ The eight Windows installer unit checks cover preservation of saves/photos and
 original data, overlapping paths, unrelated destinations, binary architecture,
 installation locking, renderer mode mismatches and recovery after relocation.
 
-The standalone setup has its own compiled C# and packaged-EXE checks:
+The standalone setup has Rust recovery tests and packaged-EXE checks:
+  cargo test --locked --manifest-path setup/rust/Cargo.toml
   python scripts/package-windows.py
   python tests/test_setup_windows.py
   python tests/test_setup_windows.py --original-installer C:/path/hardtime_setup.exe
-The 16 core checks cover interrupted update boundaries, restartable recovery,
+The 17 Rust checks cover every update rename boundary, restartable recovery,
 save-switch recovery, locking, path/archive containment, unrelated folders,
-cancellation and shortcut ownership. Seven integration groups exercise the
-actual setup EXE with only Windows on PATH, Unicode/spaced paths, preserved
-data and photos, graphics switching, active installs and invalid sources.
+cancellation, payload integrity and shortcut ownership. Twelve integration
+groups exercise the actual setup EXE with only Windows on PATH, Unicode paths,
+preserved data/photos, graphics switching, active installs, invalid sources,
+damaged payloads, junctions, result-path protection and the Rust launcher.
+--legacy-setup C:/previous/Hard-Time-Setup.exe additionally verifies upgrading
+an actual installation made by the previous C# release.
 Without --original-installer they use synthetic asset fixtures; this does not
-prove real extraction or game launch. The optional GUI smoke test in setup/
-README.txt tests the official download, actual controls and Play launcher.
+prove real extraction or game launch. The optional test_setup_rust_gui.py
+uses the actual controls to cancel, retry, download/install and Play. It checks
+the backup, captures the game menu and closes its disposable game normally.
 
 The separate controller test compiles the production SDL joystick wrapper and
 uses a virtual SDL controller to test input, disconnect, stale handles, cleared

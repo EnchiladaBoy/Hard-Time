@@ -2,19 +2,20 @@
 """Exercise the compiled setup, optionally using a locally supplied original installer."""
 import argparse
 import hashlib
-import importlib.util
 import json
+import io
 import os
 from pathlib import Path
+import struct
 import subprocess
 import sys
 import tempfile
+import time
+import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'scripts'))
-spec = importlib.util.spec_from_file_location('package_windows', ROOT / 'scripts/package-windows.py')
-package = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(package)
+import rust_setup
 
 
 def hashes(path):
@@ -26,14 +27,32 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--setup', type=Path, default=ROOT / 'dist/Hard-Time-Setup.exe')
     parser.add_argument('--original-installer', type=Path)
+    parser.add_argument('--legacy-setup', type=Path, help='Optional previous C# setup to test an actual upgrade')
     args = parser.parse_args()
     evidence = ROOT / '.work/validation/setup'
     evidence.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix='checks-', dir=evidence) as temporary:
         scratch = Path(temporary)
-        check = scratch / 'SetupChecks.exe'
-        package.compile_cs(check, [ROOT / 'setup/Common.cs', ROOT / 'setup/SetupCore.cs', ROOT / 'tests/SetupChecks.cs'], console=True)
-        subprocess.run([str(check), str(scratch / 'core')], check=True)
+        subprocess.run(rust_setup.cargo('test'), cwd=ROOT, check=True)
+        binary = args.setup.resolve().read_bytes()
+        footer = binary[-64:]
+        assert footer[:16] == rust_setup.MAGIC
+        offset, length = struct.unpack('<QQ', footer[16:32])
+        assert offset + length == len(binary) - 64
+        bundled = binary[offset:offset + length]
+        assert hashlib.sha256(bundled).digest() == footer[32:]
+        with zipfile.ZipFile(io.BytesIO(bundled)) as archive:
+            assert archive.testzip() is None
+            manifest = json.loads(archive.read('manifest.json'))
+            assert manifest['installer_language'] == 'Rust'
+            assert set(archive.namelist()) == set(manifest['files']) | {'manifest.json'}
+            for name, digest in manifest['files'].items():
+                assert hashlib.sha256(archive.read(name)).hexdigest() == digest, name
+            notices = json.loads(archive.read('runtime/licenses/Rust-dependencies.json'))
+            assert len(notices) == manifest['rust_dependency_notices'] > 0
+            assert all('runtime/licenses/' + item['notice'] in manifest['files'] for item in notices)
+            launcher = archive.read('runtime/Play Hard Time.exe')
+        print('PASS packaged Rust executable, payload checksums and dependency notices')
         original = scratch / 'original'
         for name in ('Characters', 'Graphics', 'Sound', 'Weapons', 'World', 'Data'):
             (original / name).mkdir(parents=True)
@@ -47,6 +66,12 @@ def main():
         # The end-user process gets only Windows on PATH, with no build tools.
         environment = os.environ.copy()
         environment['PATH'] = os.pathsep.join([os.environ['WINDIR'], str(Path(os.environ['WINDIR']) / 'System32')])
+        help_result = subprocess.run([str(args.setup.resolve()), '--help'], env=environment,
+                                     capture_output=True, text=True, timeout=10)
+        assert help_result.returncode == 0 and 'Rust Setup' in help_result.stdout, help_result
+        bad_argument = subprocess.run([str(args.setup.resolve()), '--source'], env=environment,
+                                      capture_output=True, text=True, timeout=10)
+        assert bad_argument.returncode == 1 and '--source needs' in bad_argument.stderr
         def run(renderer='software', success=True, target=destination, asset_source=source):
             process = subprocess.run([str(args.setup.resolve()), '--install', '--source', str(asset_source),
                                       '--destination', str(target), '--renderer', renderer, '--no-shortcuts', '--result', str(result)],
@@ -98,7 +123,93 @@ def main():
         manifest = json.loads(args.setup.with_suffix('.manifest.json').read_text())
         assert not any(name.split('/')[0] in ('Data', 'Characters', 'Graphics', 'Sound', 'World', 'Weapons') for name in manifest['files'])
         print('PASS source untouched and distributable contains no original game assets')
-        record = {'core_checks': 16, 'integration_groups': 7, 'original_installer_tested': bool(args.original_installer),
+
+        # The appended payload is checked before destination creation.
+        broken = scratch / 'corrupt-setup.exe'
+        damaged = bytearray(binary)
+        damaged[offset + length // 2] ^= 1
+        broken.write_bytes(damaged)
+        bad_target = scratch / 'corrupt-install'
+        corrupt = subprocess.run([str(broken), '--install', '--source', str(source), '--destination', str(bad_target),
+                                  '--no-shortcuts', '--result', str(result)], env=environment,
+                                 capture_output=True, timeout=30)
+        assert corrupt.returncode == 1 and 'checksum failed' in json.loads(result.read_text())['error']
+        assert not bad_target.exists()
+        print('PASS damaged payload refused before installation')
+
+        # A report path cannot overwrite source assets or installed saves, even
+        # when validation fails. Atomic report replacement also protects links.
+        for report_path in [original / 'Data/Options.dat', destination / 'Data.previous/player-save.dat']:
+            before_report = report_path.read_bytes()
+            rejected = subprocess.run([str(args.setup.resolve()), '--install', '--source', str(original),
+                                       '--destination', str(destination), '--result', str(report_path)],
+                                      env=environment, capture_output=True, timeout=15)
+            assert rejected.returncode == 1
+            assert report_path.read_bytes() == before_report
+        print('PASS automation result paths cannot overwrite saves or original assets')
+
+        # Windows junctions require no developer-mode symlink privileges.
+        import _winapi
+        junction = scratch / 'linked-original'
+        before_junction = hashes(original)
+        _winapi.CreateJunction(str(original), str(junction))
+        try:
+            assert 'link or junction' in run(success=False, target=scratch / 'junction-install', asset_source=junction)['error']
+        finally:
+            os.rmdir(junction)  # Remove only the reparse point; never recurse into its target.
+        assert hashes(original) == before_junction
+        print('PASS junction source refused')
+
+        launch_root = scratch / 'Launcher game 猫'
+        (launch_root / 'Data').mkdir(parents=True)
+        (launch_root / 'Data/player.dat').write_bytes(b'player save with \x00\xff data')
+        (launch_root / 'Play Hard Time.exe').write_bytes(launcher)
+        (launch_root / 'software-renderer.txt').write_text('software')
+        (launch_root / '.hardtime-native-install.json').write_text(json.dumps({
+            'platform': 'windows-x64', 'software_renderer': True, 'executable_sha256': 'a' * 64}))
+        subprocess.run([rust_setup.tool('rustc'), str(ROOT / 'tests/fixtures/launcher_child.rs'),
+                        '--edition=2024', '-C', 'target-feature=+crt-static', '-C', 'opt-level=1',
+                        '-o', str(launch_root / 'Hard Time.exe')], cwd=ROOT, check=True)
+        before_launch = hashes(launch_root / 'Data')
+        child_environment = environment | {'HARDTIME_TEST_STARTED': str(scratch / 'started'),
+                                           'HARDTIME_TEST_RELEASE': str(scratch / 'release')}
+        launched = subprocess.Popen([str(launch_root / 'Play Hard Time.exe')], env=child_environment)
+        try:
+            deadline = time.monotonic() + 15
+            while not (scratch / 'started').exists() and time.monotonic() < deadline:
+                assert launched.poll() is None, 'Launcher exited before starting its game'
+                time.sleep(0.05)
+            assert (scratch / 'started').is_file(), 'The game did not start'
+            assert 'Close Hard Time' in run(success=False, target=launch_root, asset_source=original)['error']
+        finally:
+            (scratch / 'release').write_bytes(b'release')
+            launched.wait(timeout=15)
+        assert launched.returncode == 0
+        backups = list((launch_root / 'backups').iterdir())
+        assert len(backups) == 1 and hashes(backups[0]) == before_launch
+        assert hashes(launch_root / 'Data') == before_launch
+        logs = list((launch_root / 'logs').glob('*.log'))
+        assert any('renderer=llvmpipe' in p.read_text(encoding='utf-8') for p in logs)
+        assert any('launcher diagnostic fixture' in p.read_text(encoding='utf-8') for p in logs)
+        assert 'Exit status:' in (launch_root / 'logs/latest.txt').read_text(encoding='utf-8')
+        print('PASS Rust launcher backup, logs, graphics environment and lock lifetime with Windows-only PATH')
+
+        if args.legacy_setup:
+            legacy_root = scratch / 'legacy-upgrade'
+            subprocess.run([str(args.legacy_setup.resolve()), '--install', '--source', str(original),
+                            '--destination', str(legacy_root), '--renderer', 'software', '--no-shortcuts',
+                            '--result', str(result)], env=environment, check=True, timeout=120)
+            (legacy_root / 'Data/player.dat').write_bytes(b'legacy player save')
+            (legacy_root / 'Photo Album/photo.bmp').write_bytes(b'legacy photo')
+            previous = {name: hashes(legacy_root / name) for name in ('Data', 'Photo Album')}
+            assert run(target=legacy_root, asset_source=original)['renderer'] == 'software'
+            for name, expected in previous.items():
+                assert hashes(legacy_root / name) == expected
+            assert json.loads((legacy_root / '.hardtime-native-install.json').read_text())['installer'].startswith('rust-')
+            print('PASS upgrade from an actual C# installation preserves player files')
+
+        record = {'core_checks': 17, 'integration_groups': 12, 'legacy_upgrade_tested': bool(args.legacy_setup),
+                  'original_installer_tested': bool(args.original_installer), 'installer_language': 'Rust',
                   'setup_sha256': hashlib.sha256(args.setup.read_bytes()).hexdigest(), 'windows_only_path': True}
         (evidence / 'latest.json').write_text(json.dumps(record, indent=2) + '\n')
 

@@ -7,7 +7,8 @@ NOTICE.txt.
 
 This preview starts a new Rust game runtime. It does not launch or link
 Blitz3D. The existing Windows setup remains the way to play the full game.
-The installer and launcher will move to Rust after the game port is usable.
+The installer and launcher are now implemented separately in Rust; see
+setup/rust/README.txt. They install the existing complete compatibility game.
 
 Current scope
 -------------
@@ -112,7 +113,8 @@ remains a behavioral reference while these systems are moved in order:
 3. NPC AI, prison events, missions and dialogue.
 4. Complete menus and audio (with the alarm still silent).
 5. Save-writing parity and gameplay regression comparisons.
-6. Rust installer and launcher, using the same asset acquisition flow.
+6. Rust installer and launcher: implemented in setup/rust, using the existing
+   asset acquisition flow. Packaging the complete Rust game will follow parity.
 
 Port gameplay rules into the independent core where practical. Preserve
 30 Hz behavior and original save schemas; render interpolation belongs

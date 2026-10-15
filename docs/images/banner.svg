@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="400" viewBox="0 0 1280 400" role="img" aria-labelledby="title description">
+  <title id="title">Hard Time — a modern native runtime for the 2007 game</title>
+  <desc id="description">An industrial charcoal and orange banner with a barred prison window. Unofficial compatibility project for Windows x64 and ARM64 Linux.</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#18222b"/>
+      <stop offset="1" stop-color="#0b1015"/>
+    </linearGradient>
+    <linearGradient id="window" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#f3a45f"/>
+      <stop offset="1" stop-color="#805139"/>
+    </linearGradient>
+    <pattern id="grid" width="48" height="48" patternUnits="userSpaceOnUse">
+      <path d="M48 0H0V48" fill="none" stroke="#b2c3ce" stroke-opacity=".045"/>
+    </pattern>
+    <pattern id="stripe" width="18" height="18" patternUnits="userSpaceOnUse" patternTransform="rotate(35)">
+      <rect width="8" height="18" fill="#ed9455"/>
+    </pattern>
+    <clipPath id="rounded"><rect width="1280" height="400" rx="18"/></clipPath>
+  </defs>
+  <g clip-path="url(#rounded)">
+    <rect width="1280" height="400" fill="url(#background)"/>
+    <rect width="1280" height="400" fill="url(#grid)"/>
+    <path d="M900 400 1040 82 1140 82 1258 400" fill="#e8a66c" opacity=".035"/>
+    <path d="M938 400 1060 82M1010 400 1080 82M1080 400V82M1150 400 1100 82M1220 400 1120 82" stroke="#e8a66c" stroke-opacity=".07"/>
+    <rect x="64" y="53" width="9" height="9" rx="2" fill="#ed9455"/>
+    <text x="88" y="64" fill="#aebcc6" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700" letter-spacing="3">UNOFFICIAL COMPATIBILITY PROJECT</text>
+    <text x="60" y="203" fill="#f4eee3" font-family="Impact, 'Arial Black', sans-serif" font-size="126" letter-spacing="2">HARD <tspan fill="#ed9455">TIME</tspan></text>
+    <path d="M65 226H752" stroke="#3e4b54"/>
+    <text x="64" y="267" fill="#d5dee4" font-family="Arial, Helvetica, sans-serif" font-size="27">The 2007 game. A modern native runtime.</text>
+    <text x="65" y="338" fill="#8ebfae" font-family="Consolas, 'Courier New', monospace" font-size="18" letter-spacing="1">WINDOWS x64</text>
+    <path d="M234 322V342" stroke="#44525c"/>
+    <text x="258" y="338" fill="#8ebfae" font-family="Consolas, 'Courier New', monospace" font-size="18" letter-spacing="1">ARM64 LINUX</text>
+    <g transform="translate(940 66)">
+      <rect x="-12" y="-12" width="224" height="258" rx="5" fill="#0b1015" stroke="#34424b" stroke-width="2"/>
+      <rect width="200" height="234" fill="url(#window)"/>
+      <path d="M0 170 45 137 85 152 145 114 200 139V234H0Z" fill="#172029" opacity=".6"/>
+      <path d="M40 0V234M80 0V234M120 0V234M160 0V234M0 78H200M0 156H200" stroke="#10171d" stroke-width="12"/>
+      <path d="M35 0V234M75 0V234M115 0V234M155 0V234" stroke="#5f5b52" stroke-width="2"/>
+      <rect x="-4" y="230" width="208" height="8" fill="#43505a"/>
+      <circle cx="-6" cy="-6" r="2" fill="#62717c"/>
+      <circle cx="206" cy="-6" r="2" fill="#62717c"/>
+      <circle cx="-6" cy="240" r="2" fill="#62717c"/>
+      <circle cx="206" cy="240" r="2" fill="#62717c"/>
+    </g>
+    <text x="1040" y="347" text-anchor="middle" fill="#7e909d" font-family="Consolas, 'Courier New', monospace" font-size="14" letter-spacing="3">EST. 2007</text>
+    <rect x="0" y="392" width="1280" height="8" fill="url(#stripe)" opacity=".85"/>
+  </g>
+</svg>

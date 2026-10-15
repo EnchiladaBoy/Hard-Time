@@ -5,7 +5,9 @@ The archived game source retains this condition:
 commercially without express permission."
 
 This repository retains the Hard Time identity and original credits. Game
-assets, installers, original executables and player save data are not included.
+runtime assets, installers, original executables and player save data are not
+included. Documentation screenshots depict the original game and retain its
+attribution; they are not a playable asset distribution.
 The independently hosted source archive is documented in provenance/; it is
 not represented as an authenticated original release.
 

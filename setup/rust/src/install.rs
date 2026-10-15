@@ -330,7 +330,7 @@ pub fn install(
             platform: "windows-x64".into(),
             software_renderer: software,
             executable_sha256: manifest.game_sha256,
-            installer: "rust-0.1.0".into(),
+            installer: concat!("rust-", env!("CARGO_PKG_VERSION")).into(),
         };
         let marker_path = workspace.path().join("install-marker.json");
         files::durable(&marker_path, &serde_json::to_vec_pretty(&marker)?)?;

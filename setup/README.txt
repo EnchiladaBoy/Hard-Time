@@ -68,7 +68,8 @@ GUI/download smoke test (interactive Windows session)
   --original-installer selects a local installer instead of the live download.
 
 Previous installer compatibility
-  The public setup-v0.1.1-preview release used C#. New builds use Rust and can
+  The earlier setup-v0.1.1-preview release used C#. From setup-v0.2.0-preview,
+  the released installer and launcher use Rust and can
   update those installations or recover their existing setup/save journals.
   To check an actual previous-release upgrade locally:
   python tests/test_setup_windows.py --legacy-setup C:/previous/Hard-Time-Setup.exe

@@ -68,7 +68,18 @@ jobs:
 
           The Rust installer downloads the original 2007 game directly from MDickie, or uses your own installer / game folder. It installs the complete native Windows x64 game, includes audio and graphics support, and creates a Play shortcut. No Rust, .NET, Python, Git, CMake, Visual Studio, or separate 7-Zip installation is needed.
 
+          **New in v0.2.0-preview**
+
+          - Installer and Play launcher rewritten in Rust, using Windows system DLLs with no .NET runtime requirement.
+          - Optional limb breaker, player invincibility and super knockback, available from Options and the pause menu. Limb breaker removes an arm or leg per landed unarmed hit and keeps living NPCs alive while enabled.
+          - Master, music, effects and ambience volume controls, plus mute, available from Options and the pause menu. The alarm remains silent.
+          - Announcement and courtroom black bars now span the display, including widescreen and ultrawide resolutions.
+
+          Cheats default to off. Limb loss is saved and is not reversed by disabling the cheat; use a separate save slot for experiments.
+
           Updates preserve existing native saves, photos and backups. Automatic graphics checks the driver on a fresh install; compatibility mode uses bundled Mesa and can be slow in crowded scenes. Windows 10 (1903+) / Windows 11 x64, including non-English installation paths. This preview is unsigned.
+
+          This installer includes the complete playable BASIC/Blitz3D game. The separate Rust game-runtime preview is still an environment explorer. Known game issue: repeated F12 screenshots can darken menu graphics on the tested software renderer; use Windows screen capture until fixed.
 
           The downloadable setup contains the rebuilt program and runtime support files. Original game assets are fetched separately from MDickie or copied locally. Hard Time is copyright Mat Dickie 2007; original credits and noncommercial conditions remain in place.
 

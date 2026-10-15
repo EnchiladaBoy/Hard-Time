@@ -87,22 +87,15 @@ Cheats default to off. Limb breaker removes one arm or leg per landed unarmed hi
 
 **One setup app. No build tools to install.** The standalone Windows installer downloads the original game from MDickie's website, adds the native build and support files, and creates a Play shortcut.
 
-1. **[Download Hard-Time-Setup.exe (26 MB)](https://github.com/EnchiladaBoy/Hard-Time/releases/download/setup-v0.1.1-preview/Hard-Time-Setup.exe)** from the [Windows setup preview release](https://github.com/EnchiladaBoy/Hard-Time/releases/tag/setup-v0.1.1-preview).
+1. **[Download Hard-Time-Setup.exe](https://github.com/EnchiladaBoy/Hard-Time/releases/download/setup-v0.2.0-preview/Hard-Time-Setup.exe)** from the [v0.2.0 Windows setup preview release](https://github.com/EnchiladaBoy/Hard-Time/releases/tag/setup-v0.2.0-preview).
 2. Open it and click **Install game**. Setup automatically selects `hardtime_setup.exe` from Downloads when present; otherwise it offers the official download. You can also choose an original game folder.
 3. Click **Play Hard Time**, or use the **Hard Time (Native)** shortcut.
 
-<p align="center"><img src="docs/images/setup.png" alt="Hard Time Setup with automatic original-game download, destination, graphics selection and shortcut options" width="700"></p>
-
-**Windows 10 (1903 or newer) / Windows 11 x64.** Python, Git, CMake, Visual Studio and a separate 7-Zip installation are unnecessary for players. It installs into your user folder without administrator rights; local-file installation works offline. Non-English usernames and installation paths are supported.
-
-**Rust installer:** New source builds produce a native Rust setup and launcher using Windows system DLLs, with no .NET runtime requirement. The linked `setup-v0.1.1-preview` download above is the earlier C# release. [Windows setup workflow artifacts](https://github.com/EnchiladaBoy/Hard-Time/actions/workflows/windows-setup.yml) provide new builds; the [setup guide](setup/README.txt) covers building and updating existing installations.
-
-<details>
-<summary>See the new Rust installer</summary>
-
 <p align="center"><img src="docs/images/setup-rust.png" alt="The native Rust Hard Time installer with automatic download, installation folder and graphics choices" width="700"></p>
 
-</details>
+**Windows 10 (1903 or newer) / Windows 11 x64.** Rust, .NET, Python, Git, CMake, Visual Studio and a separate 7-Zip installation are unnecessary for players. It installs into your user folder without administrator rights; local-file installation works offline. Non-English usernames and installation paths are supported.
+
+**New in v0.2.0:** The installer and Play launcher now use Rust. This release also includes the [new cheats and audio controls](#whats-improved), plus full-width announcement bars. It installs the complete playable game; the separate Rust game-runtime preview is described [above](#rust-migration). The [setup guide](setup/README.txt) covers building and updating existing installations.
 
 **Updating?** Close the game, reopen setup and choose the same native installation folder. Saves, photos and backups are preserved. Setup can recover an interrupted update, and the Play launcher backs up saves before each run.
 

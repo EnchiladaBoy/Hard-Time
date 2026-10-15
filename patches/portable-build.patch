@@ -1,0 +1,77 @@
+--- a/deps/uuid/CMakeLists.txt
++++ b/deps/uuid/CMakeLists.txt
+@@ -1,2 +1,5 @@
+ add_library(uuid INTERFACE)
+-target_link_libraries(uuid INTERFACE /usr/lib64/libuuid.so.1)
++if(BB_LINUX)
++  find_library(BB_UUID_LIBRARY NAMES uuid REQUIRED)
++  target_link_libraries(uuid INTERFACE ${BB_UUID_LIBRARY})
++endif()
+--- a/src/tools/compiler/CMakeLists.txt
++++ b/src/tools/compiler/CMakeLists.txt
+@@ -134,10 +134,24 @@
+ endif()
+ 
+ if(BB_LINUX AND BB_GNU)
+-  set(LIBARCH_DIR /opt/hardtime-toolchain/lib) # TODO: should find a way to derive this... `gcc -v` + parsing is an option.
+-  execute_process(COMMAND gcc --print-file-name= OUTPUT_VARIABLE LIBGCC_DIR OUTPUT_STRIP_TRAILING_WHITESPACE)
+-
+-  target_compile_definitions(blitzcc PRIVATE LIBARCH_DIR="${LIBARCH_DIR}" LIBGCC_DIR="${LIBGCC_DIR}")
++  # Query the selected compiler, respecting an optional local toolchain.
++  execute_process(COMMAND ${CMAKE_C_COMPILER} --print-file-name=crt1.o
++    OUTPUT_VARIABLE BB_CRT1 OUTPUT_STRIP_TRAILING_WHITESPACE COMMAND_ERROR_IS_FATAL ANY)
++  execute_process(COMMAND ${CMAKE_C_COMPILER} --print-file-name=crtbeginT.o
++    OUTPUT_VARIABLE BB_CRTBEGIN OUTPUT_STRIP_TRAILING_WHITESPACE COMMAND_ERROR_IS_FATAL ANY)
++  if(NOT IS_ABSOLUTE "${BB_CRT1}" OR NOT EXISTS "${BB_CRT1}" OR
++     NOT IS_ABSOLUTE "${BB_CRTBEGIN}" OR NOT EXISTS "${BB_CRTBEGIN}")
++    message(FATAL_ERROR "GCC must locate the glibc and GCC development startup objects")
++  endif()
++  get_filename_component(BB_CRT_DIR "${BB_CRT1}" DIRECTORY)
++  get_filename_component(BB_GCC_DIR "${BB_CRTBEGIN}" DIRECTORY)
++  set(LIBARCH_DIR "${BB_CRT_DIR}" CACHE PATH "glibc startup object directory")
++  set(LIBGCC_DIR "${BB_GCC_DIR}" CACHE PATH "GCC startup object directory")
++  set(BB_DYNAMIC_LINKER "/lib/ld-linux-aarch64.so.1" CACHE FILEPATH "ARM64 glibc loader")
++  if(NOT EXISTS "${BB_DYNAMIC_LINKER}")
++    message(FATAL_ERROR "ARM64 glibc loader missing; override BB_DYNAMIC_LINKER if required")
++  endif()
++  target_compile_definitions(blitzcc PRIVATE LIBARCH_DIR="${LIBARCH_DIR}" LIBGCC_DIR="${LIBGCC_DIR}" BB_DYNAMIC_LINKER="${BB_DYNAMIC_LINKER}")
+ endif()
+ 
+ target_include_directories(blitzcc PRIVATE ../src/runtime)
+--- a/src/tools/compiler/linker_lld/linker_lld.cpp
++++ b/src/tools/compiler/linker_lld/linker_lld.cpp
+@@ -399,7 +399,7 @@
+ 
+ 	if( target.host ){
+ #ifdef BB_LINUX
+-		args.push_back("-dynamic-linker");args.push_back("/lib/ld-linux-aarch64.so.1");
++		args.push_back("-dynamic-linker");args.push_back(BB_DYNAMIC_LINKER);
+ 
+ 		// TODO: find out the best way to get this information from the environment
+ 		// TODO: gcc --print-file-name=libc.a
+--- a/deps/vorbis/CMakeLists.txt
++++ b/deps/vorbis/CMakeLists.txt
+@@ -1,11 +1,7 @@
+ IF(TARGET ogg)
+   set(CMAKE_UNITY_BUILD false)
+ 
+-  # use ogg in project tree
+-  file(READ tree/CMakeLists.txt FILE_CONTENTS)
+-  string(REPLACE "find_package(Ogg" "# find_package(Ogg" FILE_CONTENTS "${FILE_CONTENTS}")
+-  file_write_changes(tree/CMakeLists.txt "${FILE_CONTENTS}")
+-
++  # The pinned dependency patch disables external Ogg lookup once.
+   add_subdirectory(tree)
+   target_output_to_toolchain(vorbis)
+   target_output_to_toolchain(vorbisfile)
+--- a/deps/vorbis/tree/CMakeLists.txt
++++ b/deps/vorbis/tree/CMakeLists.txt
+@@ -62,7 +62,7 @@
+ check_library_exists(m floor "" HAVE_LIBM)
+ 
+ # Find ogg dependency
+-# # # # # # # # find_package(Ogg REQUIRED)
++# find_package(Ogg REQUIRED)
+ 
+ add_subdirectory(lib)
+ 

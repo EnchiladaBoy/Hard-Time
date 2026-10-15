@@ -1,0 +1,13 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index f377c42..3afad89 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -62,7 +62,7 @@ message(STATUS "Configuring ${PROJECT_NAME} ${PROJECT_VERSION}")
+ check_library_exists(m floor "" HAVE_LIBM)
+ 
+ # Find ogg dependency
+-find_package(Ogg REQUIRED)
++# # # # # # # # find_package(Ogg REQUIRED)
+ 
+ add_subdirectory(lib)
+ 

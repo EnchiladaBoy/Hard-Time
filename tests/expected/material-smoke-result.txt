@@ -1,0 +1,1 @@
+PASS texture layers 0..7, disabled stage before active layer6, lazy second-stage upload

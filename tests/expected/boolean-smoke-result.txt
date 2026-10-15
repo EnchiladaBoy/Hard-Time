@@ -1,0 +1,1 @@
+PASS dynamic int/float/string true1/false0; Not; While2/-2; If2; Until2; comparison bitwiseAnd; descending For

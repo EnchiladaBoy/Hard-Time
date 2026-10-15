@@ -1,0 +1,2077 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 19c4f27..ded0437 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -40,7 +40,7 @@ endif()
+ # TODO: this will be extended a bit...
+ if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES x86_64 OR CMAKE_HOST_SYSTEM_PROCESSOR MATCHES AMD64)
+   set(BB_HOST_ARCH "x86_64")
+-elseif(CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL arm64)
++elseif(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "^(arm64|aarch64)$")
+   set(BB_HOST_ARCH "arm64")
+ endif()
+ 
+@@ -53,7 +53,7 @@ if(ARCH)
+ else()
+   if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES x86_64 OR CMAKE_HOST_SYSTEM_PROCESSOR MATCHES AMD64)
+     set(BB_ARCH "x86_64")
+-  elseif(CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL arm64)
++  elseif(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "^(arm64|aarch64)$")
+     set(BB_ARCH "arm64")
+   endif()
+ endif()
+diff --git a/deps/CMakeLists.txt b/deps/CMakeLists.txt
+index 6df1b10..e45350d 100644
+--- a/deps/CMakeLists.txt
++++ b/deps/CMakeLists.txt
+@@ -19,7 +19,7 @@ add_subdirectory(stackwalker)
+ add_subdirectory(utf8.h)
+ 
+ # ide
+-add_subdirectory(wxwidgets)
++# Native CLI build: omit IDE dependency
+ 
+ # compiler
+ add_subdirectory(json-hpp)
+@@ -50,7 +50,7 @@ add_subdirectory(uuid)
+ add_subdirectory(crossguid)
+ 
+ # third-party wrappers
+-add_subdirectory(ode)
++# Native Hard Time build: no ODE functions used
+ add_subdirectory(steamworks)
+ add_subdirectory(tiltfive)
+ #add_subdirectory(luajit)
+diff --git a/deps/uuid/CMakeLists.txt b/deps/uuid/CMakeLists.txt
+index 4381e78..4283f16 100644
+--- a/deps/uuid/CMakeLists.txt
++++ b/deps/uuid/CMakeLists.txt
+@@ -1,34 +1,2 @@
+-if(NOT BB_LINUX)
+-  return()
+-endif()
+-
+-include(ExternalProject)
+-
+-set(UUID_ROOT ${CMAKE_CURRENT_BINARY_DIR}/root)
+-set(UUID_INCLUDE ${UUID_ROOT}/include)
+-set(UUID_LIB_DIR ${UUID_ROOT}/lib)
+-set(UUID_LIB ${UUID_LIB_DIR}/libuuid.a)
+-
+-if(NOT EXISTS ${UUID_LIB})
+-  file(MAKE_DIRECTORY ${UUID_LIB_DIR})
+-  file(TOUCH ${UUID_LIB})
+-endif()
+-
+-ExternalProject_Add(UUID_EXTERNAL
+-  GIT_REPOSITORY https://git.kernel.org/pub/scm/fs/ext2/e2fsprogs.git
+-  GIT_TAG v1.46.5
+-  CONFIGURE_COMMAND ../UUID_EXTERNAL/configure --prefix=${UUID_ROOT} CFLAGS=-fPIC --enable-libuuid
+-  BUILD_COMMAND cd lib/uuid && make
+-  INSTALL_COMMAND cd lib/uuid && make install
+-  UPDATE_DISCONNECTED 1
+-)
+-
+-add_custom_command(TARGET UUID_EXTERNAL POST_BUILD
+-  COMMAND ${CMAKE_COMMAND} -E copy ${UUID_LIB} ${TOOLCHAIN_PATH}/lib
+-)
+-
+ add_library(uuid INTERFACE)
+-add_dependencies(uuid UUID_EXTERNAL)
+-target_output_to_toolchain(uuid)
+-target_include_directories(uuid INTERFACE ${UUID_INCLUDE})
+-target_link_libraries(uuid INTERFACE ${UUID_LIB})
++target_link_libraries(uuid INTERFACE /usr/lib64/libuuid.so.1)
+diff --git a/src/modules/bb/audio.openal/CMakeLists.txt b/src/modules/bb/audio.openal/CMakeLists.txt
+index d05c616..a2ece6c 100644
+--- a/src/modules/bb/audio.openal/CMakeLists.txt
++++ b/src/modules/bb/audio.openal/CMakeLists.txt
+@@ -2,6 +2,7 @@ find_package(OpenAL)
+ if(OPENAL_FOUND)
+   bb_start_module(audio.openal)
+   set(DEPENDS_ON bb.audio)
++  set(LIBS SDL2)
+   set(SOURCES audio.openal.h audio.openal.cpp)
+   if(APPLE)
+     set(SYSTEM_LIBS "-framework OpenAL")
+diff --git a/src/modules/bb/audio.openal/audio.openal.cpp b/src/modules/bb/audio.openal/audio.openal.cpp
+index ef78494..2dc451a 100644
+--- a/src/modules/bb/audio.openal/audio.openal.cpp
++++ b/src/modules/bb/audio.openal/audio.openal.cpp
+@@ -1,10 +1,8 @@
+-
+ #include "../stdutil/stdutil.h"
+ #include "audio.openal.h"
+ #include <bb/audio/ogg_stream.h>
+-#include <bb/audio/wav_stream.h>
+ #include <bb/audio/mp3_stream.h>
+-
++#include <SDL.h>
+ #ifndef __APPLE__
+ #include <AL/al.h>
+ #include <AL/alc.h>
+@@ -12,360 +10,219 @@
+ #include <OpenAL/al.h>
+ #include <OpenAL/alc.h>
+ #endif
++#include <algorithm>
++#include <cmath>
++#include <climits>
++#include <memory>
++#include <vector>
++
++// Loaded samples are immutable and shared by concurrent playback channels.
++// OpenAL owns mixing, looping and timing; no per-channel polling threads.
++struct OpenALSample {
++    ALuint buffer=0;
++    int frequency=0, channels=0;
++    float duration=0;
++    ~OpenALSample(){ if(buffer) alDeleteBuffers(1,&buffer); }
++};
++static float audioRolloff=1, audioDistance=1;
++static bool audioPaused=false;
++static float clampVolume(float v){ return std::max(0.0f,std::min(1.0f,v)); }
+ 
+-#include <thread>
+-#include <mutex>
+-#include <string.h>
+-
+-#define NUM_BUFFERS 6
+-#define BUFFER_SIZE 4096
+-
+-static std::set<BBChannel*> channel_set;
+-
+-class OpenALChannel : public BBChannel{
++class OpenALChannel : public BBChannel {
+ public:
+-	AudioStream::Ref *stream;
+-
+-	ALuint source,buffers[NUM_BUFFERS];
+-	ALuint frequency;
+-	ALenum format;
+-
+-	std::thread playbackThread;
+-	std::mutex playbackMutex;
+-	bool playbackRunning;
+-
+-	OpenALChannel():stream(0),source(0),frequency(0),playbackRunning(false){}
+-
+-	~OpenALChannel(){
+-		playbackRunning=false;
+-		playbackThread.join(); // TODO: this may not be the best idea...
+-	}
+-
+-	bool setStream( AudioStream *s ){
+-		stream=s->getRef();
+-
+-		unsigned int bits=stream->getBits(),channels=stream->getChannels();
+-
+-		format=0;
+-		if( bits==8 ){
+-			if( channels==1 )
+-				format=AL_FORMAT_MONO8;
+-			else if( channels==2 )
+-				format=AL_FORMAT_STEREO8;
+-		}else if( bits==16 ){
+-			if( channels==1 )
+-				format=AL_FORMAT_MONO16;
+-			else if( channels==2 )
+-				format=AL_FORMAT_STEREO16;
+-		}
+-		if( format==0 ){
+-			RTEX( "unsupport format" );
+-			return false;
+-		}
+-
+-		alGenBuffers( NUM_BUFFERS,buffers );
+-		alGenSources( 1,&source );
+-
+-		return alGetError()==AL_NO_ERROR;
+-	}
+-
+-	bool queue( ALuint buffer ){
+-		unsigned char *buf;
+-		size_t size=stream->decode( &buf );
+-		if( size==0 ) return false;
+-
+-		alBufferData( buffer,format,buf,size,stream->getFrequency() );
+-		alSourceQueueBuffers( source,1,&buffer );
+-		return true;
+-	}
+-
+-	bool streaming(){
+-		return playbackRunning && !stream->eof();
+-	}
+-
+-	void play(){
+-		if( !playbackRunning ){
+-			playbackRunning=true;
+-			playbackThread=std::thread( &playback,this );
+-		}
+-	}
+-
+-	static void playback( OpenALChannel *channel ){
+-		int ret;
+-
+-		for( int i=0;i<NUM_BUFFERS;i++ ){
+-			if( !channel->queue( channel->buffers[i] ) ) break;
+-		}
+-
+-		if( alGetError()!=AL_NO_ERROR ){
+-			goto end;
+-		}
+-
+-		alSourcePlay( channel->source );
+-		if( alGetError()!=AL_NO_ERROR ){
+-			channel->playbackRunning=false;
+-			goto end;
+-		}
+-
+-		while( channel->streaming() ){
+-			ALuint buffer;
+-			ALint val;
+-
+-			alGetSourcei( channel->source,AL_BUFFERS_PROCESSED,&val );
+-			if( val<=0 ) continue;
+-
+-			while( val-- ){
+-				alSourceUnqueueBuffers(channel->source, 1, &buffer);
+-				if( channel->queue( buffer )==false ){
+-					goto end;
+-				}else if( alGetError()!=AL_NO_ERROR ){
+-					LOGD( "%s","error buffering..." );
+-					goto end;
+-				}
+-			}
+-
+-			alGetSourcei( channel->source,AL_SOURCE_STATE,&val );
+-			if( val!=AL_PLAYING ){
+-				alSourcePlay(channel->source);
+-			}
+-		}
+-
+-		ALint val;
+-		do{
+-			alGetSourcei( channel->source,AL_SOURCE_STATE,&val );
+-		}while( val==AL_PLAYING );
+-
+-end:
+-		channel->playbackRunning=false;
+-
+-		alDeleteSources( 1,&channel->source );
+-		alDeleteBuffers( NUM_BUFFERS,channel->buffers );
+-	}
+-
+-	void stop(){
+-	}
+-	void setPaused( bool paused ){
+-	}
+-	void setPitch( int pitch ){
+-	}
+-	void setVolume( float volume ){
+-	}
+-	void setPan( float pan ){
+-	}
+-	void set3d( const float pos[3],const float vel[3] ){
+-		float p[3]={ pos[0],pos[1],-pos[2] };
+-		float v[3]={ vel[0],vel[1],-vel[2] };
+-
+-		// get these from set3dOptions...
+-		alSourcef( source,AL_ROLLOFF_FACTOR,0.1 );
+-		alSourcef( source,AL_REFERENCE_DISTANCE,0.2 );
+-
+-		alDistanceModel( AL_INVERSE_DISTANCE_CLAMPED );
+-		alSourcefv( source,AL_POSITION,p );
+-		alSourcefv( source,AL_VELOCITY,v );
+-		alSourcei( source,AL_SOURCE_RELATIVE,false );
+-		// alSourcef( source,AL_MIN_GAIN,0.0 );
+-		// alSourcef( source,AL_MAX_GAIN,100.0f );
+-	}
+-	bool isPlaying(){
+-		return playbackRunning;
+-	}
+-	float getDuration(){
+-		return (stream->getSamples() / (float)stream->getChannels()) / (float)stream->getFrequency();
+-	}
+-	float getPosition(){
+-		return (stream->pos / (float)stream->getChannels()) / (float)stream->getFrequency();
+-	}
++    ALuint source=0;
++    std::shared_ptr<OpenALSample> sample;
++    bool paused=false, masterPaused=false, spatial=false;
++    float position[3]={0,0,0}, velocity[3]={0,0,0};
++    ~OpenALChannel(){ if(source){ alSourceStop(source); alDeleteSources(1,&source); } }
++    bool prepare(const std::shared_ptr<OpenALSample>& s,bool use3d,bool loop,int pitch,float volume,float pan){
++        if(!source){ alGetError(); alGenSources(1,&source); if(alGetError()!=AL_NO_ERROR) return false; }
++        alSourceStop(source);
++        alSourcei(source,AL_BUFFER,0);
++        sample=s; paused=false; masterPaused=audioPaused; spatial=use3d;
++        alSourcei(source,AL_BUFFER,sample->buffer);
++        alSourcei(source,AL_LOOPING,loop?AL_TRUE:AL_FALSE);
++        alSourcei(source,AL_SOURCE_RELATIVE,use3d?AL_FALSE:AL_TRUE);
++        alSourcef(source,AL_ROLLOFF_FACTOR,use3d?audioRolloff:0);
++        alSourcef(source,AL_REFERENCE_DISTANCE,1);
++        alSource3f(source,AL_VELOCITY,0,0,0);
++        setPitch(pitch); setVolume(volume); setPan(pan);
++        return alGetError()==AL_NO_ERROR;
++    }
++    void play(){ alSourcePlay(source); if(paused||masterPaused) alSourcePause(source); }
++    void stop(){ if(source) alSourceStop(source); paused=masterPaused=false; }
++    void setPaused(bool p){
++        if(!source) return;
++        ALint state; alGetSourcei(source,AL_SOURCE_STATE,&state);
++        paused=p;
++        if(p){ if(state==AL_PLAYING) alSourcePause(source); }
++        else if(!masterPaused && state==AL_PAUSED) alSourcePlay(source);
++    }
++    void setMasterPaused(bool p){
++        if(!source) return;
++        ALint state; alGetSourcei(source,AL_SOURCE_STATE,&state);
++        masterPaused=p;
++        if(p){ if(state==AL_PLAYING) alSourcePause(source); }
++        else if(!paused && state==AL_PAUSED) alSourcePlay(source);
++    }
++    void setPitch(int hertz){ if(source&&sample) alSourcef(source,AL_PITCH,std::max(1,hertz)/(float)sample->frequency); }
++    void setVolume(float volume){ if(source) alSourcef(source,AL_GAIN,clampVolume(volume)); }
++    void setPan(float pan){
++        if(!source||spatial) return;
++        pan=std::max(-1.0f,std::min(1.0f,pan));
++        alSource3f(source,AL_POSITION,pan,0,-std::sqrt(std::max(0.0f,1-pan*pan)));
++        // Stereo sources normally bypass positional panning. OpenAL Soft's
++        // stereo-angle extension moves both channels without collapsing them.
++        if(sample&&sample->channels==2&&alIsExtensionPresent("AL_EXT_STEREO_ANGLES")){
++            const ALenum stereoAngles=0x1030;
++            float angle=std::asin(pan), angles[2]={0.523598776f-angle,-0.523598776f-angle};
++            alSourcefv(source,stereoAngles,angles);
++        }
++    }
++    void set3d(const float pos[3],const float vel[3]){
++        std::copy(pos,pos+3,position); std::copy(vel,vel+3,velocity); spatial=true;
++        if(!source) return;
++        alSourcei(source,AL_SOURCE_RELATIVE,AL_FALSE);
++        alSourcef(source,AL_ROLLOFF_FACTOR,audioRolloff);
++        alSource3f(source,AL_POSITION,pos[0]*audioDistance,pos[1]*audioDistance,-pos[2]*audioDistance);
++        alSource3f(source,AL_VELOCITY,vel[0]*audioDistance,vel[1]*audioDistance,-vel[2]*audioDistance);
++    }
++    bool isPlaying(){
++        if(!source) return false;
++        ALint state; alGetSourcei(source,AL_SOURCE_STATE,&state);
++        return state==AL_PLAYING||state==AL_PAUSED;
++    }
++    float getDuration(){ return sample?sample->duration:0; }
++    float getPosition(){
++        if(!source) return 0;
++        ALfloat seconds=0; alGetSourcef(source,AL_SEC_OFFSET,&seconds); return seconds;
++    }
+ };
++static std::vector<OpenALChannel*> channels;
++
++static OpenALChannel *playSample(const std::shared_ptr<OpenALSample>& sample,bool spatial,bool loop,int pitch,float volume,float pan,const float *pos=0,const float *vel=0){
++    OpenALChannel *channel=0;
++    // Match the original driver's reusable channel handles. Paused channels
++    // remain allocated; completed channels can be used by the next sound.
++    for(auto c:channels) if(!c->isPlaying()){ channel=c; break; }
++    if(!channel){ channel=new OpenALChannel(); channels.push_back(channel); }
++    if(!channel->prepare(sample,spatial,loop,pitch,volume,pan)) return 0;
++    if(spatial&&pos&&vel) channel->set3d(pos,vel);
++    channel->play();
++    return channel;
++}
+ 
+-class OpenALSound : public BBSound{
++class OpenALSound : public BBSound {
+ public:
+-	AudioStream *stream;
+-	ALenum format;
+-
+-	OpenALSound():format(0){
+-	}
+-
+-	~OpenALSound(){
+-	}
+-
+-	bool setStream( AudioStream *s ){
+-		stream=s;
+-		return true;
+-	}
+-
+-	BBChannel *play(){
+-		OpenALChannel *channel=new OpenALChannel();
+-		if( !channel->setStream( stream ) ){
+-			return 0;
+-		}
+-		alDistanceModel( AL_NONE );
+-		channel->play();
+-		channel_set.insert( channel );
+-		return channel;
+-	}
+-
+-	BBChannel *play3d( const float pos[3],const float vel[3] ){
+-		OpenALChannel *channel=new OpenALChannel();
+-		if( !channel->setStream( stream ) ){
+-			return 0;
+-		}
+-		channel->set3d( pos,vel );
+-		channel->play();
+-		channel_set.insert( channel );
+-		return channel;
+-	}
+-
+-	void setLoop( bool loop ){
+-	}
+-
+-	void setPitch( int hertz ){
+-	}
+-
+-	void setVolume( float volume ){
+-	}
+-
+-	void setPan( float pan ){
+-	}
++    std::shared_ptr<OpenALSample> sample;
++    bool loop=false;
++    int pitch;
++    float volume=1,pan=0;
++    explicit OpenALSound(const std::shared_ptr<OpenALSample>& s):sample(s),pitch(s->frequency){}
++    ~OpenALSound(){
++        for(auto c:channels) if(c->sample==sample){
++            c->stop(); alSourcei(c->source,AL_BUFFER,0); c->sample.reset();
++        }
++    }
++    BBChannel *play(){ return playSample(sample,false,loop,pitch,volume,pan); }
++    BBChannel *play3d(const float pos[3],const float vel[3]){ return playSample(sample,true,loop,pitch,volume,pan,pos,vel); }
++    void setLoop(bool value){ loop=value; }
++    void setPitch(int hertz){ pitch=std::max(1,hertz); }
++    void setVolume(float value){ volume=clampVolume(value); }
++    void setPan(float value){ pan=std::max(-1.0f,std::min(1.0f,value)); }
+ };
+ 
+-class OpenALAudioDriver : public BBAudioDriver{
+-protected:
+-	ALCdevice *dev;
+-	ALCcontext *ctx;
+-
+-	AudioStream *loadStream( const std::string &filename,bool preload ){
+-		AudioStream *stream=0;
+-
+-		// TODO: come up with something a little more clever
+-		const char *ext = strrchr( filename.c_str(),'.' );
+-		const char *exts[]={ ext,strcasecmp( ext + 1,"wav" )==0?".ogg":".wav",0 };
+-		int tries=0;
+-		while( exts[tries] ){
+-			if( strcasecmp( exts[tries] + 1,"wav" ) == 0 ){
+-				stream=new WAVAudioStream( BUFFER_SIZE );
+-			}else if( strcasecmp( exts[tries] + 1,"ogg" ) == 0 ){
+-				stream=new OGGAudioStream( BUFFER_SIZE );
+-			}else if( strcasecmp( exts[tries] + 1,"mp3" ) == 0 ){
+-				stream=new MP3AudioStream( BUFFER_SIZE );
+-			}
+-
+-			if( !stream ) return 0;
+-
+-			if( stream->init( filename.c_str() ) ){
+-				break;
+-			}else{
+-				delete stream;
+-				stream=0;
+-			}
+-
+-			tries++;
+-		}
+-
+-		return stream;
+-	}
++static std::shared_ptr<OpenALSample> loadSample(const std::string& filename,bool use3d){
++    std::vector<unsigned char> pcm;
++    SDL_AudioSpec spec={}; Uint8 *wav=0; Uint32 wavsize=0;
++    // SDL handles RIFF chunk ordering plus both MS-ADPCM and IMA-ADPCM,
++    // all of which occur in Hard Time's original assets.
++    if(SDL_LoadWAV(filename.c_str(),&spec,&wav,&wavsize)){
++        pcm.assign(wav,wav+wavsize); SDL_FreeWAV(wav);
++    }else{
++        std::unique_ptr<AudioStream> decoder;
++        std::string ext=filename.substr(filename.find_last_of('.')+1);
++        std::transform(ext.begin(),ext.end(),ext.begin(),[](unsigned char c){return std::tolower(c);});
++        if(ext=="ogg") decoder.reset(new OGGAudioStream(65536));
++        else if(ext=="mp3") decoder.reset(new MP3AudioStream(65536));
++        else return {};
++        if(!decoder->init(filename.c_str())) return {};
++        std::unique_ptr<AudioStream::Ref> ref(decoder->getRef());
++        spec.freq=ref->getFrequency(); spec.channels=ref->getChannels();
++        spec.format=ref->getBits()==8?AUDIO_U8:AUDIO_S16LSB;
++        for(;;){
++            unsigned char *bytes; size_t count=ref->decode(&bytes);
++            if(!count) break;
++            pcm.insert(pcm.end(),bytes,bytes+count);
++            if(pcm.size()>INT_MAX/8) return {};
++        }
++    }
++    if(pcm.empty()||spec.freq<=0||!spec.channels||pcm.size()>INT_MAX/8) return {};
++    int outputChannels=use3d?1:std::min(2,(int)spec.channels);
++    SDL_AudioCVT cvt={};
++    int convert=SDL_BuildAudioCVT(&cvt,spec.format,spec.channels,spec.freq,AUDIO_S16SYS,outputChannels,spec.freq);
++    if(convert<0) return {};
++    if(convert){
++        cvt.len=(int)pcm.size();
++        pcm.resize((size_t)cvt.len*cvt.len_mult); cvt.buf=pcm.data();
++        if(SDL_ConvertAudio(&cvt)<0) return {};
++        pcm.resize(cvt.len_cvt);
++    }
++    auto sample=std::make_shared<OpenALSample>();
++    sample->frequency=spec.freq; sample->channels=outputChannels;
++    sample->duration=pcm.size()/(2.0f*outputChannels*spec.freq);
++    alGetError(); alGenBuffers(1,&sample->buffer);
++    alBufferData(sample->buffer,outputChannels==1?AL_FORMAT_MONO16:AL_FORMAT_STEREO16,pcm.data(),(ALsizei)pcm.size(),spec.freq);
++    if(alGetError()!=AL_NO_ERROR) return {};
++    return sample;
++}
+ 
++class OpenALAudioDriver : public BBAudioDriver {
++    ALCdevice *dev=0;
++    ALCcontext *ctx=0;
+ public:
+-	OpenALAudioDriver():dev(0),ctx(0){
+-	}
+-
+-	~OpenALAudioDriver(){
+-		while( channel_set.size() ) {
+-			BBChannel *c=*channel_set.begin();
+-			if( channel_set.erase( c ) ) delete c;
+-		}
+-		while( sound_set.size() ) freeSound( *sound_set.begin() );
+-		alcMakeContextCurrent( NULL );
+-		if( ctx ){ alcDestroyContext( ctx );ctx=0; }
+-		if( dev ){ alcCloseDevice( dev );dev=0; }
+-	}
+-
+-	bool init(){
+-		if( !(dev=alcOpenDevice(NULL)) ){
+-			fprintf(stderr, "Oops\n");
+-			return false;
+-		}
+-		if( !(ctx=alcCreateContext(dev,NULL)) ){
+-			fprintf(stderr, "Oops2\n");
+-			return false;
+-		}
+-		alcMakeContextCurrent( ctx );
+-
+-		return true;
+-	}
+-
+-	BBSound *loadSound( const std::string &filename,bool use_3d ){
+-		AudioStream *stream=loadStream( filename,true );
+-		if( !stream ){
+-			return 0;
+-		}
+-
+-		OpenALSound *sound=new OpenALSound();
+-		if( !sound->setStream( stream ) ){
+-			delete sound;
+-			delete stream;
+-			return 0;
+-		}
+-
+-		sound_set.insert( sound );
+-		return sound;
+-	}
+-
+-	void setPaused( bool paused ){
+-	}
+-	//master pause
+-	void setVolume( float volume ){
+-	}
+-	//master volume
+-
+-	void set3dOptions( float roll,float dopp,float dist ){
+-		alDopplerFactor( dopp );
+-	}
+-
+-	void set3dListener( const float pos[3],const float vel[3],const float forward[3],const float up[3] ){
+-		float p[3]={ pos[0],pos[1],-pos[2] };
+-		float v[3]={ vel[0],vel[1],-vel[2] };
+-
+-		alListenerfv( AL_POSITION,p );
+-		alListenerfv( AL_VELOCITY,v );
+-		alListenerfv( AL_ORIENTATION,up );
+-	}
+-
+-	BBChannel *playCDTrack( int track,int mode ){
+-		RTEX( "PlayCDTrack not implemented" );
+-	}
+-
+-	BBChannel *playFile( const std::string &filename,bool use_3d ){
+-		AudioStream *stream=loadStream( filename,false );
+-		if( !stream ){
+-			return 0;
+-		}
+-
+-		OpenALChannel *channel=new OpenALChannel();
+-		if( !channel->setStream( stream ) ){
+-			delete stream;
+-			delete channel;
+-			return 0;
+-		}
+-
+-		channel->play();
+-		channel_set.insert( channel );
+-		return channel;
+-	}
++    ~OpenALAudioDriver(){
++        for(auto c:channels) delete c;
++        channels.clear();
++        while(!sound_set.empty()) freeSound(*sound_set.begin());
++        if(ctx){ alcMakeContextCurrent(NULL); alcDestroyContext(ctx); }
++        if(dev) alcCloseDevice(dev);
++    }
++    bool init(){
++        dev=alcOpenDevice(NULL); if(!dev) return false;
++        ctx=alcCreateContext(dev,NULL); if(!ctx||!alcMakeContextCurrent(ctx)) return false;
++        audioPaused=false; audioRolloff=audioDistance=1;
++        alDistanceModel(AL_INVERSE_DISTANCE_CLAMPED);
++        return true;
++    }
++    BBSound *loadSound(const std::string& filename,bool use3d){
++        auto sample=loadSample(filename,use3d); if(!sample) return 0;
++        auto sound=new OpenALSound(sample); sound_set.insert(sound); return sound;
++    }
++    void setPaused(bool paused){ audioPaused=paused; for(auto c:channels) c->setMasterPaused(paused); }
++    void setVolume(float volume){ alListenerf(AL_GAIN,clampVolume(volume)); }
++    void set3dOptions(float roll,float dopp,float dist){
++        audioRolloff=std::max(0.0f,roll); audioDistance=std::max(0.000001f,dist);
++        alDopplerFactor(std::max(0.0f,dopp));
++        for(auto c:channels) if(c->spatial) c->set3d(c->position,c->velocity);
++    }
++    void set3dListener(const float pos[3],const float vel[3],const float forward[3],const float up[3]){
++        const float orientation[6]={forward[0],forward[1],-forward[2],up[0],up[1],-up[2]};
++        alListener3f(AL_POSITION,pos[0]*audioDistance,pos[1]*audioDistance,-pos[2]*audioDistance);
++        alListener3f(AL_VELOCITY,vel[0]*audioDistance,vel[1]*audioDistance,-vel[2]*audioDistance);
++        alListenerfv(AL_ORIENTATION,orientation);
++    }
++    BBChannel *playCDTrack(int track,int mode){ RTEX("PlayCDTrack not implemented"); }
++    BBChannel *playFile(const std::string& filename,bool use3d){
++        auto sample=loadSample(filename,use3d); if(!sample) return 0;
++        return playSample(sample,use3d,false,sample->frequency,1,0);
++    }
+ };
+ 
+-static OpenALAudioDriver *driver;
+-
+-BBMODULE_CREATE( audio_openal ){
+-	driver=d_new OpenALAudioDriver();
+-	if( !driver->init() ){
+-		delete driver;
+-		return true;
+-	}
+-	gx_audio=driver;
+-	return true;
+-}
+-
+-BBMODULE_DESTROY( audio_openal ){
+-	return true;
++BBMODULE_CREATE(audio_openal){
++    auto driver=new OpenALAudioDriver();
++    if(!driver->init()){ delete driver; return true; }
++    gx_audio=driver;
++    return true;
+ }
++BBMODULE_DESTROY(audio_openal){ return true; }
+diff --git a/src/modules/bb/blitz3d.gl/blitz3d.gl.cpp b/src/modules/bb/blitz3d.gl/blitz3d.gl.cpp
+index 07105b2..c18495f 100644
+--- a/src/modules/bb/blitz3d.gl/blitz3d.gl.cpp
++++ b/src/modules/bb/blitz3d.gl/blitz3d.gl.cpp
+@@ -147,7 +147,7 @@ public:
+ };
+ 
+ // TODO: merge this with GLLight...
+-struct LightState{
++struct alignas(16) LightState{
+ 	struct LightData{
+ 		float mat[16];
+ 		float color[4];
+@@ -156,7 +156,7 @@ struct LightState{
+ 	int lights_used;
+ };
+ 
+-struct UniformState{
++struct alignas(16) UniformState{
+ 	float ambient[4];
+ 	float brush_color[4];
+ 	float fog_color[4];
+@@ -445,6 +445,14 @@ public:
+ 		us.fullbright=rs.fx&FX_FULLBRIGHT;
+ 		us.use_vertex_color=rs.fx&FX_VERTEXCOLOR;
+ 
++		// Lazy uploads bind texture unit zero. Finish every upload before
++		// installing the final material bindings, including earlier stages.
++		unsigned textures[MAX_TEXTURES]={0};
++		for( int i=0;i<MAX_TEXTURES;i++ ){
++			const RenderState::TexState &ts=rs.tex_states[i];
++			if(ts.canvas && ts.blend) textures[i]=static_cast<GLCanvas*>(ts.canvas)->textureId();
++		}
++
+ 		for( int i=0;i<MAX_TEXTURES;i++ ){
+ 			GL( glActiveTexture( GL_TEXTURE0+i ) );
+ 			GL( glBindTexture( GL_TEXTURE_2D,0 ) );
+@@ -457,14 +465,7 @@ public:
+ 		for( int i=0;i<MAX_TEXTURES;i++ ){
+ 			const RenderState::TexState &ts=rs.tex_states[i];
+ 
+-			if( !ts.canvas ){
+-				GL( glActiveTexture( GL_TEXTURE0+i ) );
+-				GL( glBindTexture( GL_TEXTURE_2D,0 ) );
+-
+-				GL( glActiveTexture( GL_TEXTURE0+MAX_TEXTURES+i ) );
+-				GL( glBindTexture( GL_TEXTURE_CUBE_MAP,0 ) );
+-				continue;
+-			}
++			if( !ts.canvas || !ts.blend ) continue;
+ 
+ 			GLCanvas *canvas=(GLCanvas*)ts.canvas;
+ 
+@@ -472,20 +473,24 @@ public:
+ 				// ---
+ 			} else {
+ 				int flags=ts.canvas->getFlags();
++				// Shader metadata and samplers must use the same compact stage.
++				// Blitz materials may leave holes (e.g. a body at layer 1 or a
++				// sign at layer 2).
++				int stage=us.texs_used;
+ 
+ 				if( flags&BBCanvas::CANVAS_TEX_CUBE ){
+-					GL( glActiveTexture( GL_TEXTURE0+i ) );
++					GL( glActiveTexture( GL_TEXTURE0+stage ) );
+ 					GL( glBindTexture( GL_TEXTURE_2D,0 ) );
+ 
+-					GL( glActiveTexture( GL_TEXTURE0+MAX_TEXTURES+i ) );
++					GL( glActiveTexture( GL_TEXTURE0+MAX_TEXTURES+stage ) );
+ 				}else{
+-					GL( glActiveTexture( GL_TEXTURE0+MAX_TEXTURES+i ) );
++					GL( glActiveTexture( GL_TEXTURE0+MAX_TEXTURES+stage ) );
+ 					GL( glBindTexture( GL_TEXTURE_CUBE_MAP,0 ) );
+ 
+-					GL( glActiveTexture( GL_TEXTURE0+i ) );
++					GL( glActiveTexture( GL_TEXTURE0+stage ) );
+ 				}
+ 
+-				canvas->bind();
++				GL( glBindTexture( canvas->target,textures[i] ) );
+ 
+ 				float mat[16]={
+ 					1.0,0.0, 0.0,0.0,
+diff --git a/src/modules/bb/graphics.gl/CMakeLists.txt b/src/modules/bb/graphics.gl/CMakeLists.txt
+index df956e6..7fe867b 100644
+--- a/src/modules/bb/graphics.gl/CMakeLists.txt
++++ b/src/modules/bb/graphics.gl/CMakeLists.txt
+@@ -1,3 +1,4 @@
++set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/default.glsl")
+ bin2h(SOURCE_FILE default.glsl HEADER_FILE default.glsl.h VARIABLE_NAME DEFAULT_GLSL)
+ 
+ bb_start_module(graphics.gl)
+diff --git a/src/modules/bb/graphics.gl/canvas.cpp b/src/modules/bb/graphics.gl/canvas.cpp
+index aee1310..ed706e5 100644
+--- a/src/modules/bb/graphics.gl/canvas.cpp
++++ b/src/modules/bb/graphics.gl/canvas.cpp
+@@ -19,7 +19,7 @@ GLenum _cube_order[6]={
+ 	GL_TEXTURE_CUBE_MAP_POSITIVE_Y  // down (negative Y) face
+ };
+ 
+-struct UniformState{
++struct alignas(16) UniformState{
+ 	float xywh[4];
+ 	float res[2];
+ 	float texscale[2];
+@@ -54,6 +54,7 @@ bool makeProgram( ContextResources *res,float sx,float sy,float tx,float ty,bool
+ 	}
+ 
+ 	GL( glUseProgram( res->default_program ) );
++	GL( glUniform2f( glGetUniformLocation(res->default_program,"u_texoffset"),0,0 ) );
+ 
+ 	UniformState us={ 0 };
+ 	us.texscale[0]=tx;us.texscale[1]=ty;
+@@ -79,7 +80,7 @@ bool makeProgram( ContextResources *res,float sx,float sy,float tx,float ty,bool
+ 
+ static
+ void initArrays( int size,GLuint* buffer,GLuint *array ){
+-	if( !glIsVertexArray( buffer[0] ) ){
++	if( !glIsVertexArray( array[0] ) ){
+ 		GL( glGenVertexArrays( size,array ) );
+ 		GL( glGenBuffers( size,buffer ) );
+ 
+@@ -98,6 +99,9 @@ void initArrays( int size,GLuint* buffer,GLuint *array ){
+ 
+ GLCanvas::GLCanvas( ContextResources *res,int w,int h,int f ):res(res),pixmap(0),mask(0),width(w),height(h),pixels(0),handle_x(0),handle_y(0),texture(0),framebuffer(0),mode(0),depthbuffer(0),cube_mode(0){
+ 	flags=f;
++	dirty=true;
++	font=nullptr;
++	color[0]=color[1]=color[2]=1.0f;
+ 
+ 	setOrigin( 0,0 );
+ 	setHandle( 0,0 );
+@@ -119,6 +123,10 @@ GLCanvas::GLCanvas( ContextResources *res,int f ):GLCanvas(res,0,0,f){
+ 
+ 
+ GLCanvas::~GLCanvas(){
++	delete[] pixels;
++	if(texture) glDeleteTextures(1,&texture);
++	if(depthbuffer) glDeleteRenderbuffers(1,&depthbuffer);
++	if(framebuffer && mode!=GL_FRONT && mode!=GL_BACK) glDeleteFramebuffers(1,&framebuffer);
+ 	if( pixmap ) {
+ 		delete pixmap;
+ 		pixmap=0;
+@@ -134,7 +142,12 @@ void GLCanvas::setFont( BBFont *f ){
+ }
+ 
+ void GLCanvas::setMask( unsigned argb ){
++	// A rendered ImageBuffer has newer contents than its original CPU bitmap.
++	if(texture && !dirty && render_target && !pixels){
++		lock();pixels_dirty=true;unlock();
++	}
+ 	mask=argb;
++	flags|=CANVAS_TEX_MASK;
+ 	dirty=true;
+ }
+ 
+@@ -145,6 +158,7 @@ void GLCanvas::setColor( unsigned argb ){
+ }
+ 
+ void GLCanvas::setClsColor( unsigned argb ){
++	cls_color=argb;
+ 	int r = (argb >> 16) & 255;
+ 	int g = (argb >> 8) & 255;
+ 	int b = argb & 255;
+@@ -169,11 +183,14 @@ void GLCanvas::setHandle( int x,int y ){
+ 
+ void GLCanvas::setViewport( int x,int y,int w,int h ){
+ 	vx=x;vy=y;vw=w;vh=h;
+-	GL( glViewport( x,height-y-h,w,h ) );
+-	GL( glScissor( x,height-y-h,w,h ) );
++	if(gx_canvas==this){
++		GL( glViewport( x,height-y-h,w,h ) );
++		GL( glScissor( x,height-y-h,w,h ) );
++	}
+ }
+ 
+ void GLCanvas::cls(){
++	setClsColor(cls_color);
+ 	GL( glClear( GL_COLOR_BUFFER_BIT ) );
+ }
+ 
+@@ -234,7 +251,7 @@ void GLCanvas::flush(){
+ 	}
+ }
+ 
+-void GLCanvas::quad( int x,int y,int w,int h,bool solid,bool texenabled,float tx,float ty,float color[3] ){
++void GLCanvas::quad( int x,int y,int w,int h,bool solid,bool texenabled,float tx,float ty,float color[3],float ux,float uy ){
+ 	static const Vertex vertices[2][4] = {
+ 		{
+ 			{ 0.0, 0.0, 0.0, 0.0 },
+@@ -263,6 +280,7 @@ void GLCanvas::quad( int x,int y,int w,int h,bool solid,bool texenabled,float tx
+ 	}
+ 
+ 	makeProgram( res,scale_x,scale_y,tx,ty,texenabled,width,height,x,y,w,h,color );
++	GL( glUniform2f( glGetUniformLocation(res->default_program,"u_texoffset"),ux,uy ) );
+ 
+ 	int i=solid?0:1;
+ 	GL( glBindVertexArray( res->quad_array[i] ) );
+@@ -398,42 +416,36 @@ void GLCanvas::text( int x,int y,const std::string &t ){
+ }
+ 
+ void GLCanvas::blit( int x,int y,BBCanvas *s,int src_x,int src_y,int src_w,int src_h,bool solid ){
+-	uint32_t cfb;
+-	GL( glGetIntegerv( GL_FRAMEBUFFER_BINDING,(GLint*)&cfb ) );
+-
+-	float sx,sy,dx,dy;
+-	s->getScale( &sx,&sy );
+-	getScale( &dx,&dy );
+-
+-	// LOGD( "src: scale(%f, %f), %i,%i",sx,sy,s->getWidth(),s->getHeight() );
+-	// LOGD( "dst: scale(%f, %f), %i,%i",dx,dy,getWidth(),getHeight() );
+-
+-	GLCanvas *src=(GLCanvas*)s;
+-	unsigned int rfb=src->framebufferId(),dfb=framebufferId();
+-
+-	int srcX0=src_x*sx;
+-	int srcY0=src->getHeight()-(src_h+src_y)*sy;
+-	int srcX1=src_x*sx+src_w*sx;
+-	int srcY1=src->getHeight()-src_y*sy;
+-	int dstX0=x*dx;
+-	int dstY0=getHeight()-(src_h+y)*dy;
+-	int dstX1=(x+src_w)*dx;
+-	int dstY1=getHeight()-y*dy;
+-
+-	GL( glBindFramebuffer( GL_READ_FRAMEBUFFER,rfb ) );
+-	GL( glBindFramebuffer( GL_DRAW_FRAMEBUFFER,dfb ) );
+-
+-	GL( glBlitFramebuffer( srcX0,srcY0,srcX1,srcY1,dstX0,dstY0,dstX1,dstY1,GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT,GL_NEAREST ) );
+-	GL( glGenerateMipmap( target ) );
+-
+-	if( !(flags&CANVAS_TEX_VIDMEM) ){
+-		downloadData();
+-	}
+-
+-	GL( glBindFramebuffer( GL_FRAMEBUFFER,cfb ) );
+-	flush();
+-
+-	dirty=true;
++ GLCanvas *src=static_cast<GLCanvas*>(s);
++ x+=origin_x-src->handle_x;y+=origin_y-src->handle_y;
++ // Captures and image copies are infrequent; retain canonical top-down RGBA
++ // pixels for subsequent ResizeImage, SaveImage and texture uploads.
++ if(mode!=GL_FRONT && mode!=GL_BACK){
++  bool src_lock=src->lock(),dst_lock=lock();
++  for(int yy=0;yy<src_h;++yy) for(int xx=0;xx<src_w;++xx){
++   int sx=src_x+xx,sy=src_y+yy,dx=x+xx,dy=y+yy;
++   if(sx<0||sy<0||sx>=src->width||sy>=src->height||dx<vx||dy<vy||dx>=vx+vw||dy>=vy+vh) continue;
++   unsigned c=src->getPixelFast(sx,sy);
++   if(solid || (c&0xffffffU)!=(src->mask&0xffffffU)) setPixelFast(dx,dy,c);
++  }
++  if(dst_lock) unlock();
++  if(src_lock) src->unlock();
++  return;
++ }
++ glActiveTexture(GL_TEXTURE0);
++ src->bind();
++ if(solid) glDisable(GL_BLEND);
++ else{glEnable(GL_BLEND);glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);}
++ glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
++ glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
++ glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_CLAMP_TO_EDGE);
++ glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_CLAMP_TO_EDGE);
++ float white[3]={1,1,1};
++ float tx=float(src_w)/src->width,ty=float(src_h)/src->height;
++ float ux=float(src_x)/src->width,uy=float(src_y)/src->height;
++ if(src->texture_bottom_up){ty=-ty;uy=1-uy;}
++ quad(x,y,src_w,src_h,true,true,tx,ty,white,ux,uy);
++ glDisable(GL_BLEND);
+ }
+ 
+ void GLCanvas::image( BBCanvas *c,int x,int y,bool solid ){
+@@ -442,8 +454,12 @@ void GLCanvas::image( BBCanvas *c,int x,int y,bool solid ){
+ 	GL( glActiveTexture( GL_TEXTURE0 ) );
+ 	src->bind();
+ 
+-	GL( glEnable( GL_BLEND ) );
+-	GL( glBlendFunc( GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA ) );
++	if( solid ){
++		GL( glDisable( GL_BLEND ) );
++	}else{
++		GL( glEnable( GL_BLEND ) );
++		GL( glBlendFunc( GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA ) );
++	}
+ 
+ 	GL( glTexParameteri( GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR ) );
+ 	GL( glTexParameteri( GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR ) );
+@@ -451,7 +467,7 @@ void GLCanvas::image( BBCanvas *c,int x,int y,bool solid ){
+ 	GL( glTexParameteri( GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_CLAMP_TO_EDGE ) );
+ 
+ 	float white[3]={ 1.0,1.0,1.0 };
+-	quad( x-src->handle_x,y-src->handle_y,src->getWidth(),src->getHeight(),true,true,1.0,1.0,white );
++	quad( x-src->handle_x,y-src->handle_y,src->getWidth(),src->getHeight(),true,true,1.0,src->texture_bottom_up?-1.0:1.0,white,0,src->texture_bottom_up?1.0:0.0 );
+ 
+ 	GL( glDisable( GL_BLEND ) );
+ }
+@@ -467,51 +483,43 @@ bool GLCanvas::rect_collide( int x,int y,int rect_x,int rect_y,int rect_w,int re
+ }
+ 
+ bool GLCanvas::lock(){
+-	if( pixels ) return false;
+-
+-	pixels=new unsigned char[width*height*4];
+-	downloadData();
+-	// RTEX( "GLCanvas::lock not implemented" );
+-	return true;
+-}
+-
+-void GLCanvas::setPixel( int x,int y,unsigned argb ){
+-	// RTEX( "GLCanvas::setPixel not implemented" );
+-	lock();
+-	setPixelFast( x,y,argb );
+-	unlock();
+-}
+-
+-#define UC(c) static_cast<unsigned char>(c)
+-
+-void GLCanvas::setPixelFast( int x,int y,unsigned argb ){
+-	// RTEX( "GLCanvas::setPixelFast not implemented" );
++ if(pixels) return false;
++ pixels=new unsigned char[width*height*4]();
++ downloadData();
++ pixels_dirty=false;
++ return true;
+ }
+ 
+-void GLCanvas::copyPixel( int x,int y,BBCanvas *src,int src_x,int src_y ){
+-	RTEX( "GLCanvas::copyPixel not implemented" );
++void GLCanvas::setPixel(int x,int y,unsigned argb){
++ bool acquired=lock();setPixelFast(x,y,argb);if(acquired) unlock();
+ }
+-
+-void GLCanvas::copyPixelFast( int x,int y,BBCanvas *src,int src_x,int src_y ){
+-	RTEX( "GLCanvas::copyPixelFast not implemented" );
++void GLCanvas::setPixelFast(int x,int y,unsigned argb){
++ if(!pixels||x<0||y<0||x>=width||y>=height) return;
++ auto p=pixels+4*(y*width+x);
++ p[0]=argb>>16;p[1]=argb>>8;p[2]=argb;p[3]=255;
++ pixels_dirty=true;
+ }
+-
+-unsigned GLCanvas::getPixel( int x,int y ){
+-	// RTEX( "GLCanvas::getPixel not implemented" );
+-	return 0;
++void GLCanvas::copyPixel(int x,int y,BBCanvas *src,int sx,int sy){setPixel(x,y,src->getPixel(sx,sy));}
++void GLCanvas::copyPixelFast(int x,int y,BBCanvas *src,int sx,int sy){setPixelFast(x,y,src->getPixelFast(sx,sy));}
++unsigned GLCanvas::getPixel(int x,int y){
++ bool acquired=lock();unsigned c=getPixelFast(x,y);if(acquired) unlock();return c;
+ }
+-
+-unsigned GLCanvas::getPixelFast( int x,int y ){
+-	// RTEX( "GLCanvas::getPixelFast not implemented" );
+-	return 0;
++unsigned GLCanvas::getPixelFast(int x,int y){
++ if(!pixels||x<0||y<0||x>=width||y>=height) return mask;
++ auto p=pixels+4*(y*width+x);
++ return (unsigned(p[3])<<24)|(unsigned(p[0])<<16)|(unsigned(p[1])<<8)|p[2];
+ }
+-
+ void GLCanvas::unlock(){
+-	if( !pixels ) return;
+-
+-	// RTEX( "GLCanvas::unlock not implemented" );
+-	uploadData();
+-	delete[] pixels;pixels=0;
++ if(!pixels) return;
++ if(pixels_dirty){
++  if(pixmap) delete pixmap;
++  pixmap=new BBPixmap();pixmap->width=width;pixmap->height=height;
++  pixmap->bpp=4;pixmap->pitch=width*4;pixmap->format=PF_RGBA;pixmap->trans=true;
++  pixmap->bits=new unsigned char[width*height*4];
++  memcpy(pixmap->bits,pixels,width*height*4);
++  uploadData();
++ }
++ delete[] pixels;pixels=nullptr;pixels_dirty=false;
+ }
+ 
+ void GLCanvas::setCubeMode( int mode ){
+@@ -560,22 +568,34 @@ unsigned GLCanvas::getMask()const{
+ }
+ 
+ unsigned GLCanvas::getColor()const{
+-	RTEX( "GLCanvas::getColor not implemented" );
+-	return 0;
++	return 0xff000000U | (static_cast<unsigned>(color[0]*255.0f+0.5f)<<16) |
++	       (static_cast<unsigned>(color[1]*255.0f+0.5f)<<8) | static_cast<unsigned>(color[2]*255.0f+0.5f);
+ }
+ 
+ unsigned GLCanvas::getClsColor()const{
+-	RTEX( "GLCanvas::getClsColor not implemented" );
+-	return 0;
++	return cls_color;
+ }
+ 
+ void GLCanvas::set(){
++	if(mode!=GL_FRONT && mode!=GL_BACK && !render_target){
++		// Offscreen rendering uses GL's bottom-up framebuffer coordinates.
++		// Preserve existing pixels when converting an uploaded image to a target.
++		render_target=true;
++		dirty=true;
++		textureId();
++	}
+ 	GL( glBindFramebuffer( GL_FRAMEBUFFER,framebufferId() ) );
+ 	if( mode!=GL_FRONT&&mode!=GL_BACK ){
+ 		const GLenum modes[1]{ mode };
+ 		GL( glDrawBuffers( 1,modes ) );
+ 		GL( glReadBuffer( mode ) );
+ 	}
++#ifdef BB_DESKTOP
++	else{
++		GL( glDrawBuffer(mode) );
++		GL( glReadBuffer(mode) );
++	}
++#endif
+ 	setViewport( vx,vy,vw,vh );
+ }
+ 
+@@ -612,75 +632,47 @@ void GLCanvas::unset(){
+ }
+ 
+ void GLCanvas::uploadData(){
+-	if( texture && target!=GL_TEXTURE_2D ) return;
+-
+-	BBPixmap *pm=0;
+-	void *data=0;
+-
+-	// TODO: not super happy with this...
+-	if( pixels ){
+-		data=pixels;
+-	} else if( pixmap ){
+-		pm=d_new BBPixmap;
+-		memcpy( pm,pixmap,sizeof(BBPixmap) );
+-
+-		int size=pm->width*pm->bpp*pm->height;
+-		pm->bits=new unsigned char[size];
+-		memcpy( pm->bits,pixmap->bits,size );
+-
+-		if( flags&CANVAS_TEX_MASK ){
+-			pm->mask( (mask>>16)&255,(mask>>8)&255,mask&255 );
+-		}
+-
+-		data=pm->bits;
+-	}else{
+-		// if( target!=GL_TEXTURE_2D ){
+-		// 	pm=d_new BBPixmap();
+-		// 	pm->trans=true;
+-		// 	pm->format=PF_RGBA;
+-		// 	pm->width=width;
+-		// 	pm->height=height;
+-		// 	pm->pitch=4;
+-		// 	pm->bpp=4;
+-		// 	int size=pm->width*pm->bpp*pm->height;
+-		// 	pm->bits=new unsigned char[size];
+-		// 	pm->fill(255,0,0,1.0);
+-
+-		// 	data=pm->bits;
+-		// }
+-	}
+-
+-	if( !texture ) GL( glGenTextures( 1,&texture ) );
+-
+-	GL( glActiveTexture( GL_TEXTURE0 ) );
+-	GL( glBindTexture( target,texture ) );
+-	for( int i=0;i<(target==GL_TEXTURE_2D?1:6);i++ ){
+-		GL( glTexImage2D( target==GL_TEXTURE_2D?target:_cube_order[i],0,GL_RGBA,width,height,0,GL_RGBA,GL_UNSIGNED_BYTE,data ) );
+-	}
+-	GL( glGenerateMipmap( target ) );
+-
+-	delete pm;
+-
+-	dirty=false;
++ if(texture && target!=GL_TEXTURE_2D) return;
++ const unsigned char *data=pixels?pixels:(pixmap?pixmap->bits:nullptr);
++ std::vector<unsigned char> storage(width*height*4,0);
++ if(data){
++  for(int y=0;y<height;++y){
++   auto dst=storage.data()+4*width*(render_target?height-1-y:y);
++   memcpy(dst,data+4*width*y,4*width);
++   if(flags&CANVAS_TEX_MASK) for(int x=0;x<width;++x){
++    auto p=dst+x*4;
++    if(p[0]==((mask>>16)&255)&&p[1]==((mask>>8)&255)&&p[2]==(mask&255))p[3]=0;
++   }
++  }
++ }
++ if(!texture)glGenTextures(1,&texture);
++ glActiveTexture(GL_TEXTURE0);glBindTexture(target,texture);
++ for(int i=0;i<(target==GL_TEXTURE_2D?1:6);++i)
++  glTexImage2D(target==GL_TEXTURE_2D?target:_cube_order[i],0,GL_RGBA,width,height,0,GL_RGBA,GL_UNSIGNED_BYTE,storage.data());
++ glGenerateMipmap(target);
++ texture_bottom_up=render_target;dirty=false;
+ }
+ 
+ void GLCanvas::downloadData(){
+-	// BBPixmap *pm=d_new BBPixmap();
+-	// pm->trans=true;
+-	// pm->format=PF_RGBA;
+-	// pm->width=width;
+-	// pm->height=height;
+-	// pm->pitch=4;
+-	// pm->bpp=4;
+-	// int size=pm->width*pm->bpp*pm->height;
+-	// pm->bits=new unsigned char[size];
+-	// pixmap=pm;
+-
+-	void *bits=pixmap?pixmap->bits:pixels;
+-	if( bits ){
+-		GL( glBindFramebuffer( GL_FRAMEBUFFER,framebufferId() ) );
+-		GL( glReadPixels( 0,0,width,height,GL_BGRA,GL_UNSIGNED_BYTE,bits  ) );
+-	}
++ if(!pixels) return;
++ // An untouched newly created image has no GL storage yet.
++ if(!texture && !framebuffer && mode!=GL_FRONT && mode!=GL_BACK){
++  if(pixmap)memcpy(pixels,pixmap->bits,width*height*4);
++  return;
++ }
++ GLint old_fb=0,old_draw=0,old_read=0;
++ glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING,&old_fb);
++ glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING,&old_draw);
++ glGetIntegerv(GL_READ_BUFFER,&old_read);
++ bool screen=mode==GL_FRONT||mode==GL_BACK;
++ glBindFramebuffer(GL_READ_FRAMEBUFFER,framebufferId());
++ glReadBuffer(screen?mode:GL_COLOR_ATTACHMENT0);
++ std::vector<unsigned char> temp(width*height*4);
++ glReadPixels(0,0,width,height,GL_RGBA,GL_UNSIGNED_BYTE,temp.data());
++ bool flipped=screen||texture_bottom_up;
++ for(int y=0;y<height;++y)memcpy(pixels+4*width*y,temp.data()+4*width*(flipped?height-1-y:y),4*width);
++ glBindFramebuffer(GL_READ_FRAMEBUFFER,old_fb);glReadBuffer(old_read);
++ glBindFramebuffer(GL_DRAW_FRAMEBUFFER,old_draw);
+ }
+ 
+ unsigned int GLCanvas::textureId(){
+@@ -722,7 +714,6 @@ void GLCanvas::setPixmap( BBPixmap *pm ){
+ 
+ 	if( !pm ){
+ 		if( pixmap ){
+-			delete pixmap->bits;
+ 			delete pixmap;
+ 		}
+ 		pixmap=0;
+diff --git a/src/modules/bb/graphics.gl/canvas.h b/src/modules/bb/graphics.gl/canvas.h
+index bb726ce..d1e6519 100644
+--- a/src/modules/bb/graphics.gl/canvas.h
++++ b/src/modules/bb/graphics.gl/canvas.h
+@@ -24,10 +24,12 @@ protected:
+ 	float color[3];
+ 	BBPixmap *pixmap;
+ 	bool dirty;
++	bool pixels_dirty=false,render_target=false,texture_bottom_up=false;
++	unsigned cls_color=0xff000000U;
+ 
+ 	void flush();
+ 
+-	void quad( int x,int y,int w,int h,bool solid,bool tex,float tx,float ty,float color[3] );
++	void quad( int x,int y,int w,int h,bool solid,bool tex,float tx,float ty,float color[3],float ux=0,float uy=0 );
+ public:
+ 	GLCanvas( ContextResources *res,int f );
+ 	GLCanvas( ContextResources *res,int w,int h,int f );
+diff --git a/src/modules/bb/graphics.gl/default.glsl b/src/modules/bb/graphics.gl/default.glsl
+index b095799..94c69bb 100644
+--- a/src/modules/bb/graphics.gl/default.glsl
++++ b/src/modules/bb/graphics.gl/default.glsl
+@@ -1,6 +1,7 @@
+ precision highp float;
+ 
+ uniform sampler2D u_tex;
++uniform vec2 u_texoffset;
+ 
+ // must be mindful of alignment when ordering...
+ layout(std140) uniform BBRenderState {
+@@ -36,7 +37,7 @@ void main() {
+   v_position = v_position * 2.0 - 1.0;
+ 
+   v.color = RS.color;
+-  v.texcoord = a_texcoord*RS.texscale;
++  v.texcoord = a_texcoord*RS.texscale+u_texoffset;
+ 
+   gl_PointSize = RS.scale.x;
+   gl_Position = vec4(v_position, 0.0, 1.0);
+diff --git a/src/modules/bb/graphics.gl/graphics.gl.cpp b/src/modules/bb/graphics.gl/graphics.gl.cpp
+index dcad6d8..7cf371a 100644
+--- a/src/modules/bb/graphics.gl/graphics.gl.cpp
++++ b/src/modules/bb/graphics.gl/graphics.gl.cpp
+@@ -138,7 +138,7 @@ GLGraphics::GLGraphics():fb(&res,BBCanvas::CANVAS_TEX_VIDMEM),bb(&res,BBCanvas::
+ 	front_canvas=&fb;
+ 
+ 	bb.setFramebuffer( framebuffer,GL_BACK );
+-	back_canvas=&fb;
++	back_canvas=&bb;
+ 
+ 	GL( glDisable( GL_DEPTH_TEST ) );
+ 	GL( glEnable( GL_SCISSOR_TEST ) );
+diff --git a/src/modules/bb/graphics/font.cpp b/src/modules/bb/graphics/font.cpp
+index 01e9e93..d96b09b 100644
+--- a/src/modules/bb/graphics/font.cpp
++++ b/src/modules/bb/graphics/font.cpp
+@@ -56,7 +56,9 @@ bool lookupFontData( const std::string &fontName,BBFontData &font ){
+ 	if( !fontPath ) return false;
+ 
+ 	std::ifstream file( fontPath,std::ios::binary|std::ios::ate );
++	if( !file ) return false;
+ 	font.size=file.tellg();
++	if( font.size<=0 ) return false;
+ 	file.seekg( 0,std::ios::beg );
+ 
+ 	font.data=new unsigned char[font.size];
+@@ -76,7 +78,7 @@ bool lookupFontData( const std::string &fontName,BBFontData &font ){
+ 	FcPattern* pat=FcNameParse( (const FcChar8*)fontName.c_str() );
+ 	FcConfigSubstitute( config,pat,FcMatchPattern );
+ 	FcDefaultSubstitute( pat );
+-	char* fontPath=0;
++	std::string fontPath;
+ 	FcResult result;
+ 	FcPattern* match=FcFontMatch( config,pat,&result );
+ 	if( match ){
+@@ -86,11 +88,14 @@ bool lookupFontData( const std::string &fontName,BBFontData &font ){
+ 		}
+ 	}
+ 	FcPatternDestroy( pat );
++	if( match ) FcPatternDestroy( match );
+ 
+-	if( !fontPath ) return false;
++	if( fontPath.empty() ) return false;
+ 
+ 	std::ifstream file( fontPath,std::ios::binary|std::ios::ate );
++	if( !file ) return false;
+ 	font.size=file.tellg();
++	if( font.size<=0 ) return false;
+ 	file.seekg( 0,std::ios::beg );
+ 
+ 	font.data=new unsigned char[font.size];
+@@ -113,7 +118,7 @@ std::map<std::string,BBFontData> bbFontCache;
+ BBFont::~BBFont(){
+ }
+ 
+-BBImageFont::BBImageFont( FT_Face f,int h,float d ):face(f),height(h),atlas(0){
++BBImageFont::BBImageFont( FT_Face f,int h,float d ):face(f),height(h),atlas(0),dirty(false){
+ 	FT_Size_RequestRec req={ FT_SIZE_REQUEST_TYPE_REAL_DIM,0,(long)(height*64*d),0,0 };
+ 	FT_Request_Size( face,&req );
+ 
+@@ -121,6 +126,11 @@ BBImageFont::BBImageFont( FT_Face f,int h,float d ):face(f),height(h),atlas(0){
+ 	density=1.0/d;
+ }
+ 
++BBImageFont::~BBImageFont(){
++	delete atlas;
++	FT_Done_Face(face);
++}
++
+ BBImageFont *BBImageFont::load( const std::string &name,int height,float density,int flags ){
+ 	BBFontData font;
+ 	if( bbFontCache.count( name )==0 ){
+@@ -194,46 +204,61 @@ bool BBImageFont::loadChars( const std::string &t )const{
+ void BBImageFont::rebuildAtlas(){
+ 	if( !dirty ) return;
+ 
+-	delete atlas;
+-	atlas=d_new BBPixmap;
+-	atlas->width=atlas->height=256;
+-	atlas->bits=new unsigned char[atlas->width*atlas->height];
+-	memset( atlas->bits,0,atlas->width*atlas->height );
+-
+-	int ox=0,oy=0,my=0;
+-	for( std::map<uint32_t,Char>::iterator it=characters.begin();it!=characters.end();++it ){
+-		Char &c=it->second;
+-
+-		FT_Load_Glyph( face,c.index,FT_LOAD_RENDER );
+-
+-		if( ox+c.width>=atlas->width ){
+-			oy+=my;
+-			ox=my=0;
++	// Reserve a transparent pixel around each glyph for linear filtering.
++	// Size the atlas before writing any bitmap; large or varied text can
++	// exceed the old fixed 256x256 allocation.
++	size_t area=0;
++	int width=256;
++	for( const auto &entry:characters ){
++		const Char &c=entry.second;
++		area+=(c.width+2)*(c.height+2);
++		while( width<c.width+2 ) width*=2;
++	}
++	while( size_t(width)*width<area ) width*=2;
++	int ox=1,oy=1,row_height=0;
++	for( auto &entry:characters ){
++		Char &c=entry.second;
++		if( ox+c.width+1>width ){
++			oy+=row_height+2;
++			ox=1;
++			row_height=0;
+ 		}
++		c.x=ox;
++		c.y=oy;
++		row_height=std::max(row_height,c.height);
++		ox+=c.width+2;
++	}
++	int atlas_height=256;
++	while( atlas_height<oy+row_height+1 ) atlas_height*=2;
+ 
+-		c.x=ox;c.y=oy;
+-
+-		my=std::max( c.height,my );
+-
++	delete atlas;
++	atlas=d_new BBPixmap;
++	atlas->width=width;
++	atlas->height=atlas_height;
++	atlas->depth=8;
++	atlas->bpp=1;
++	atlas->pitch=width;
++	atlas->bits=new unsigned char[size_t(width)*atlas_height]();
++
++	for( const auto &entry:characters ){
++		const Char &c=entry.second;
++		if( FT_Load_Glyph(face,c.index,FT_LOAD_RENDER) ) continue;
+ 		FT_Bitmap bm=face->glyph->bitmap;
+-		for( int y=0;y<bm.rows;y++ ){
+-			unsigned char *in=bm.buffer+y*bm.pitch;
+-			unsigned char *out=atlas->bits+(atlas->width*(oy+y))+ox;
++		for( int y=0;y<bm.rows;++y ){
++			const unsigned char *in=bm.buffer+(bm.pitch>=0?y:bm.rows-1-y)*std::abs(bm.pitch);
++			unsigned char *out=atlas->bits+size_t(atlas->width)*(c.y+y)+c.x;
+ 			switch( bm.pixel_mode ){
+ 			case FT_PIXEL_MODE_MONO:
+-				for( int i=0;i<8;i++ ) out[i]=(*in>>(7-i))&1?0xff:0;
++				for( unsigned int x=0;x<bm.width;++x ) out[x]=(in[x/8]>>(7-x%8))&1?255:0;
+ 				break;
+ 			case FT_PIXEL_MODE_GRAY:
+-				memcpy( out,in,bm.width );
++				memcpy(out,in,bm.width);
+ 				break;
+ 			default:
+-				RTEX( "unhandled font bitmap format" );
++				RTEX("unhandled font bitmap format");
+ 			}
+ 		}
+-
+-		ox+=c.width;
+ 	}
+-
+ 	dirty=false;
+ }
+ 
+diff --git a/src/modules/bb/graphics/font.h b/src/modules/bb/graphics/font.h
+index 198e11d..d8d4745 100644
+--- a/src/modules/bb/graphics/font.h
++++ b/src/modules/bb/graphics/font.h
+@@ -49,6 +49,7 @@ private:
+ 	BBImageFont( FT_Face f,int height,float density );
+ 
+ public:
++	~BBImageFont();
+ 	static BBImageFont *load( const std::string &name,int height,float density,int flags );
+ 
+ 	bool loadChar( uint32_t c )const;
+diff --git a/src/modules/bb/graphics/graphics.cpp b/src/modules/bb/graphics/graphics.cpp
+index ec0e835..1c6ddd2 100644
+--- a/src/modules/bb/graphics/graphics.cpp
++++ b/src/modules/bb/graphics/graphics.cpp
+@@ -555,49 +555,28 @@ static BBCanvas *tformCanvas( BBCanvas *c,float m[2][2],int x_handle,int y_handl
+ 	return t;
+ }
+ 
+-static bool saveCanvas( BBCanvas *c,const std::string &f ){
+-#ifndef WIN32 // FIXME: port to posix
+-	return false;
+-#else
+-	std::ofstream out( f.c_str(),std::ios::binary );
+-	if( !out.good() ) return false;
+-
+-	int tempsize=(c->getWidth()*3+3)&~3;
+-
+-	BITMAPFILEHEADER bf;
+-	memset( &bf,0,sizeof(bf) );
+-	bf.bfType='MB';
+-	bf.bfSize=sizeof(BITMAPFILEHEADER)+sizeof(BITMAPINFOHEADER)+tempsize*c->getHeight();
+-	bf.bfOffBits=sizeof(BITMAPFILEHEADER)+sizeof(BITMAPINFOHEADER);
+-	BITMAPINFOHEADER bi;memset( &bi,0,sizeof(bi) );
+-	bi.biSize=sizeof(bi);
+-	bi.biWidth=c->getWidth();
+-	bi.biHeight=c->getHeight();
+-	bi.biPlanes=1;
+-	bi.biBitCount=24;
+-	out.write( (char*)&bf,sizeof(bf) );
+-	out.write( (char*)&bi,sizeof(bi) );
+-
+-	unsigned char *temp=d_new unsigned char[ tempsize ];
+-	memset( temp,0,tempsize );
+-
+-	c->lock();
+-	for( int y=c->getHeight()-1;y>=0;--y ){
+-		unsigned char *dest=temp;
+-		for( int x=0;x<c->getWidth();++x ){
+-			unsigned rgb=c->getPixelFast( x,y );
+-			*dest++=rgb&0xff;
+-			*dest++=(rgb>>8)&0xff;
+-			*dest++=(rgb>>16)&0xff;
+-		}
+-		out.write( (char*)temp,tempsize );
+-	}
+-	c->unlock();
+-
+-	delete [] temp;
+-
+-	return out.good();
+-#endif
++static bool saveCanvas(BBCanvas *c,const std::string &f){
++ std::ofstream out(f.c_str(),std::ios::binary);
++ if(!out.good())return false;
++ unsigned stride=(c->getWidth()*3+3)&~3U;
++ unsigned size=stride*c->getHeight();
++ // Write explicit little-endian BMP fields: no platform structure packing.
++ auto u16=[&](unsigned n){out.put(n&255);out.put((n>>8)&255);};
++ auto u32=[&](unsigned n){u16(n&65535);u16(n>>16);};
++ out.put('B');out.put('M');u32(54+size);u32(0);u32(54);
++ u32(40);u32(c->getWidth());u32(c->getHeight());u16(1);u16(24);
++ u32(0);u32(size);u32(0);u32(0);u32(0);u32(0);
++ std::vector<unsigned char> row(stride,0);
++ bool acquired=c->lock();
++ for(int y=c->getHeight()-1;y>=0;--y){
++  for(int x=0;x<c->getWidth();++x){
++   unsigned rgb=c->getPixelFast(x,y);
++   row[x*3]=rgb;row[x*3+1]=rgb>>8;row[x*3+2]=rgb>>16;
++  }
++  out.write(reinterpret_cast<const char*>(row.data()),row.size());
++ }
++ if(acquired)c->unlock();
++ return out.good();
+ }
+ 
+ bb_int_t BBCALL bbLoadBuffer( BBCanvas *c,BBStr *str ){
+diff --git a/src/modules/bb/input/input.h b/src/modules/bb/input/input.h
+index fa2a8b4..e2ee424 100644
+--- a/src/modules/bb/input/input.h
++++ b/src/modules/bb/input/input.h
+@@ -7,6 +7,8 @@
+ #include <vector>
+ 
+ extern std::vector<BBDevice*> bbJoysticks;
++extern BBDevice bbKeyboard;
++extern BBDevice bbMouse;
+ extern BBInputDriver *gx_input;
+ 
+ int BBCALL bbEnumInput();
+diff --git a/src/modules/bb/pixmap/pixmap.cpp b/src/modules/bb/pixmap/pixmap.cpp
+index e7b2bc5..b859418 100644
+--- a/src/modules/bb/pixmap/pixmap.cpp
++++ b/src/modules/bb/pixmap/pixmap.cpp
+@@ -9,7 +9,7 @@ BBPixmap::BBPixmap():width(0),height(0),depth(0),pitch(0),bits(0){
+ }
+ 
+ BBPixmap::~BBPixmap(){
+-  delete bits;
++  delete[] bits;
+ }
+ 
+ int BBPixmap::getWidth(){
+diff --git a/src/modules/bb/runtime.sdl/runtime.sdl.cpp b/src/modules/bb/runtime.sdl/runtime.sdl.cpp
+index fe95b92..33380b5 100644
+--- a/src/modules/bb/runtime.sdl/runtime.sdl.cpp
++++ b/src/modules/bb/runtime.sdl/runtime.sdl.cpp
+@@ -17,19 +17,6 @@
+ 
+ #include <bb/input/input.h>
+ 
+-class SDLInputDriver : public BBInputDriver{
+-public:
+-	~SDLInputDriver(){}
+-
+-	BBDevice *getJoystick( int port )const{ return 0; }
+-	int getJoystickType( int port )const{ return 0; }
+-	int numJoysticks()const{ return 0; }
+-
+-	int toAscii( int code )const{
+-		return code&0xff;
+-	}
+-};
+-
+ class SDLJoystick : public BBDevice{
+ private:
+ 	SDL_Joystick *js;
+@@ -42,19 +29,41 @@ public:
+ 		snprintf( name,sizeof(name),"%s",SDL_JoystickName( js ) );
+ 	}
+ 
++	~SDLJoystick(){ SDL_JoystickClose( js ); }
++
+ 	void update(){
++		bbRuntimeIdle();
++		SDL_JoystickUpdate();
+ 		int ax_count=SDL_JoystickNumAxes( js );
+ 		if( ax_count>32 ) ax_count=32;
+ 
+ 		for( int i=0;i<ax_count;i++ ){
+-			axis_states[i]=(float)SDL_JoystickGetAxis( js,i )/SHRT_MAX;
++			int value=SDL_JoystickGetAxis( js,i );
++			axis_states[i]=(float)value/(value<0?32768.0f:32767.0f);
+ 		}
+ 
+-		int btn_count=SDL_JoystickNumButtons( js );
++		int btn_count=std::min(255,SDL_JoystickNumButtons( js ));
+ 		for( int i=0;i<btn_count;i++ ){
+-			setDownState( i,SDL_JoystickGetButton( js,i ) );
++			setDownState( i+1,SDL_JoystickGetButton( js,i ) );
++		}
++	}
++};
++
++class SDLInputDriver : public BBInputDriver{
++	std::vector<BBDevice*> joysticks;
++public:
++	SDLInputDriver(){
++		for( int i=0;i<SDL_NumJoysticks();++i ){
++			if( SDL_Joystick *js=SDL_JoystickOpen(i) ) joysticks.push_back(d_new SDLJoystick(js));
+ 		}
+ 	}
++	~SDLInputDriver(){ for( auto joystick:joysticks ) delete joystick; }
++	BBDevice *getJoystick( int port )const{
++		return port>=0&&port<joysticks.size()?joysticks[port]:nullptr;
++	}
++	int getJoystickType( int port )const{ return getJoystick(port)?1:0; }
++	int numJoysticks()const{ return joysticks.size(); }
++	int toAscii( int code )const{ return code&0xff; }
+ };
+ 
+ std::map<SDL_Window*,SDLRuntime*> runtimes;
+@@ -78,13 +87,8 @@ void SDLRuntime::afterCreate(){
+ 
+ 	gx_input=d_new SDLInputDriver();
+ 
+-	for( int i=0;i<SDL_NumJoysticks();i++ ){
+-		SDL_Joystick *js=SDL_JoystickOpen( i );
+-		if( js ){
+-			SDLJoystick *j=d_new SDLJoystick( js );
+-			bbJoysticks.push_back( j );
+-		}
+-	}
++	bbEnumInput();
++	SDL_StartTextInput();
+ 
+ #ifdef BB_NDK
+ 	bbSetJNI( (jobject)SDL_AndroidGetActivity(),(JNIEnv*)SDL_AndroidGetJNIEnv() );
+@@ -109,11 +113,21 @@ bool SDLRuntime::idle(){
+ 		if( event.type == SDL_QUIT ){
+ 			RTEX( 0 );
+ 		}else if( event.type==SDL_WINDOWEVENT ){
+-			if( event.window.event==SDL_WINDOWEVENT_RESIZED ) {
++			if( event.window.event==SDL_WINDOWEVENT_FOCUS_LOST ){
++				bbKeyboard.reset();
++				for( int button=1;button<=3;++button ) bbMouse.upEvent(button);
++			}else if( event.window.event==SDL_WINDOWEVENT_FOCUS_GAINED ){
++				int x,y; SDL_GetMouseState(&x,&y);
++				BBEvent ev(BBEVENT_MOUSEMOVE,1,x,y);
++				bbOnEvent.run(&ev);
+ 			}
+ 		}else if( event.type==SDL_MOUSEMOTION ){
+ 			BBEvent ev( BBEVENT_MOUSEMOVE,0,event.motion.x,event.motion.y );
+ 			bbOnEvent.run( &ev );
++		}else if( event.type==SDL_MOUSEWHEEL ){
++			int direction=event.wheel.direction==SDL_MOUSEWHEEL_FLIPPED?-1:1;
++			BBEvent ev(BBEVENT_MOUSEWHEEL,event.wheel.y*direction*120);
++			bbOnEvent.run(&ev);
+ 		}else if( event.type==SDL_MOUSEBUTTONDOWN||event.type==SDL_MOUSEBUTTONUP ){
+ 			int button=0;
+ 			switch( event.button.button ){
+@@ -128,7 +142,7 @@ bool SDLRuntime::idle(){
+ 			}
+ 		}else if( (event.type==SDL_KEYDOWN||event.type==SDL_KEYUP) && event.key.repeat==0 ){
+ 			int code=event.key.keysym.scancode;
+-			if( code>=MAX_SDL_SCANCODES ) continue;
++			if( code<0 || code>=MAX_SDL_SCANCODES ) continue;
+ 
+ 			int key=SDL_SCANCODE_MAP[code];
+ 			if( !key ){
+@@ -174,7 +188,7 @@ bool SDLRuntime::idle(){
+ 				}
+ 				if( ev.data ) bbOnEvent.run( &ev );
+ 			}
+-		}else if( event.type==SDL_TEXTINPUT||event.type==SDL_TEXTEDITING ){
++		}else if( event.type==SDL_TEXTINPUT ){
+ 			// LOGD( "text: %s",event.text.text );
+ 			char *c=event.text.text;
+ 			while( *c ){
+@@ -214,7 +228,8 @@ void SDLRuntime::_refreshTitle( void *data,void *context ){
+ }
+ 
+ void SDLRuntime::setTitle( const char *title ){
+-	// SDL_SetWindowTitle( wnd,title );
++	auto graphics=(SDLGraphics*)((SDLContextDriver*)bbContextDriver)->getGraphics();
++	if( graphics ) SDL_SetWindowTitle( graphics->wnd,title );
+ }
+ 
+ BBMODULE_CREATE( runtime_sdl ){
+diff --git a/src/modules/bb/runtime.sdl/scancodes.cpp b/src/modules/bb/runtime.sdl/scancodes.cpp
+index d7210f3..0837d96 100644
+--- a/src/modules/bb/runtime.sdl/scancodes.cpp
++++ b/src/modules/bb/runtime.sdl/scancodes.cpp
+@@ -50,15 +50,15 @@ unsigned short SDL_SCANCODE_MAP[MAX_SDL_SCANCODES]={
+ 	13,  // SDL_SCANCODE_EQUALS = 46,
+ 	26,  // SDL_SCANCODE_LEFTBRACKET = 47,
+ 	27,  // SDL_SCANCODE_RIGHTBRACKET = 48,
+-	0,  // SDL_SCANCODE_BACKSLASH = 49,
+-	0,  // SDL_SCANCODE_NONUSHASH = 50,
+-	0,  // SDL_SCANCODE_SEMICOLON = 51,
+-	0,  // SDL_SCANCODE_APOSTROPHE = 52,
+-	0,  // SDL_SCANCODE_GRAVE = 53,
+-	0,  // SDL_SCANCODE_COMMA = 54,
+-	0,  // SDL_SCANCODE_PERIOD = 55,
+-	0,  // SDL_SCANCODE_SLASH = 56,
+-	0,  // SDL_SCANCODE_CAPSLOCK = 57,
++	43,  // SDL_SCANCODE_BACKSLASH = 49,
++	43,  // SDL_SCANCODE_NONUSHASH = 50,
++	39,  // SDL_SCANCODE_SEMICOLON = 51,
++	40,  // SDL_SCANCODE_APOSTROPHE = 52,
++	41,  // SDL_SCANCODE_GRAVE = 53,
++	51,  // SDL_SCANCODE_COMMA = 54,
++	52,  // SDL_SCANCODE_PERIOD = 55,
++	53,  // SDL_SCANCODE_SLASH = 56,
++	58,  // SDL_SCANCODE_CAPSLOCK = 57,
+ 	59,  // SDL_SCANCODE_F1 = 58,
+ 	60,  // SDL_SCANCODE_F2 = 59,
+ 	61,  // SDL_SCANCODE_F3 = 60,
+@@ -74,37 +74,37 @@ unsigned short SDL_SCANCODE_MAP[MAX_SDL_SCANCODES]={
+ 	183,  // SDL_SCANCODE_PRINTSCREEN = 70,
+ 	70,  // SDL_SCANCODE_SCROLLLOCK = 71,
+ 	197,  // SDL_SCANCODE_PAUSE = 72,
+-	0,  // SDL_SCANCODE_INSERT = 73,
+-	0,  // SDL_SCANCODE_HOME = 74,
+-	0,  // SDL_SCANCODE_PAGEUP = 75,
+-	0,  // SDL_SCANCODE_DELETE = 76,
+-	0,  // SDL_SCANCODE_END = 77,
+-	0,  // SDL_SCANCODE_PAGEDOWN = 78,
++	210,  // SDL_SCANCODE_INSERT = 73,
++	199,  // SDL_SCANCODE_HOME = 74,
++	201,  // SDL_SCANCODE_PAGEUP = 75,
++	211,  // SDL_SCANCODE_DELETE = 76,
++	207,  // SDL_SCANCODE_END = 77,
++	209,  // SDL_SCANCODE_PAGEDOWN = 78,
+ 	205, // SDL_SCANCODE_RIGHT = 79,
+ 	203, // SDL_SCANCODE_LEFT = 80,
+ 	208, // SDL_SCANCODE_DOWN = 81,
+ 	200, // SDL_SCANCODE_UP = 82,
+-	0,  // SDL_SCANCODE_NUMLOCKCLEAR = 83,
+-	0,  // SDL_SCANCODE_KP_DIVIDE = 84,
+-	0,  // SDL_SCANCODE_KP_MULTIPLY = 85,
+-	0,  // SDL_SCANCODE_KP_MINUS = 86,
+-	0,  // SDL_SCANCODE_KP_PLUS = 87,
+-	0,  // SDL_SCANCODE_KP_ENTER = 88,
+-	0,  // SDL_SCANCODE_KP_1 = 89,
+-	0,  // SDL_SCANCODE_KP_2 = 90,
+-	0,  // SDL_SCANCODE_KP_3 = 91,
+-	0,  // SDL_SCANCODE_KP_4 = 92,
+-	0,  // SDL_SCANCODE_KP_5 = 93,
+-	0,  // SDL_SCANCODE_KP_6 = 94,
+-	0,  // SDL_SCANCODE_KP_7 = 95,
+-	0,  // SDL_SCANCODE_KP_8 = 96,
+-	0,  // SDL_SCANCODE_KP_9 = 97,
+-	0,  // SDL_SCANCODE_KP_0 = 98,
+-	0,  // SDL_SCANCODE_KP_PERIOD = 99,
+-	0,  // SDL_SCANCODE_NONUSBACKSLASH = 100
+-	0,  // SDL_SCANCODE_APPLICATION = 101
++	69,  // SDL_SCANCODE_NUMLOCKCLEAR = 83,
++	181,  // SDL_SCANCODE_KP_DIVIDE = 84,
++	55,  // SDL_SCANCODE_KP_MULTIPLY = 85,
++	74,  // SDL_SCANCODE_KP_MINUS = 86,
++	78,  // SDL_SCANCODE_KP_PLUS = 87,
++	156,  // SDL_SCANCODE_KP_ENTER = 88,
++	79,  // SDL_SCANCODE_KP_1 = 89,
++	80,  // SDL_SCANCODE_KP_2 = 90,
++	81,  // SDL_SCANCODE_KP_3 = 91,
++	75,  // SDL_SCANCODE_KP_4 = 92,
++	76,  // SDL_SCANCODE_KP_5 = 93,
++	77,  // SDL_SCANCODE_KP_6 = 94,
++	71,  // SDL_SCANCODE_KP_7 = 95,
++	72,  // SDL_SCANCODE_KP_8 = 96,
++	73,  // SDL_SCANCODE_KP_9 = 97,
++	82,  // SDL_SCANCODE_KP_0 = 98,
++	83,  // SDL_SCANCODE_KP_PERIOD = 99,
++	86,  // SDL_SCANCODE_NONUSBACKSLASH = 100
++	221,  // SDL_SCANCODE_APPLICATION = 101
+ 	0,  // SDL_SCANCODE_POWER = 102
+-	0,  // SDL_SCANCODE_KP_EQUALS = 103,
++	141,  // SDL_SCANCODE_KP_EQUALS = 103,
+ 	0,  // SDL_SCANCODE_F13 = 104,
+ 	0,  // SDL_SCANCODE_F14 = 105,
+ 	0,  // SDL_SCANCODE_F15 = 106,
+diff --git a/src/modules/bb/stream/stream.cpp b/src/modules/bb/stream/stream.cpp
+index 846a706..1d9ce8a 100644
+--- a/src/modules/bb/stream/stream.cpp
++++ b/src/modules/bb/stream/stream.cpp
+@@ -101,7 +101,8 @@ void BBCALL bbWriteInt( BBStream *s,bb_int_t n ){
+ 
+ void BBCALL bbWriteFloat( BBStream *s,bb_float_t n ){
+ 	if( bb_env.debug ) debugStream( s );
+-	s->write( (char*)&n,4 );
++	float stored=static_cast<float>(n);
++	s->write( (char*)&stored,4 );
+ }
+ 
+ void BBCALL bbWriteString( BBStream *s,BBStr *t ){
+diff --git a/src/modules/bb/system/system.cpp b/src/modules/bb/system/system.cpp
+index 41cb481..ae224ac 100644
+--- a/src/modules/bb/system/system.cpp
++++ b/src/modules/bb/system/system.cpp
+@@ -6,6 +6,7 @@
+ 
+ #include <string.h>
+ #include <time.h>
++#include <chrono>
+ #ifndef BB_WINDOWS
+ #include <unistd.h>
+ #include <sys/time.h>
+@@ -22,7 +23,6 @@ extern "C" {
+ }
+ #endif
+ 
+-static int base_time=0;
+ std::map<std::string,std::string> bbSystemProperties;
+ BBSystemDriver *bbSystemDriver=0;
+ 
+@@ -70,10 +70,10 @@ bb_int_t BBCALL bbExecFile( BBStr *f ){
+ }
+ 
+ void BBCALL bbDelay( bb_int_t ms ){
+-	int t=bbMilliSecs()+ms;
++	bb_int_t t=bbMilliSecs()+ms;
+ 	for(;;){
+ 		if( !bbRuntimeIdle() ) RTEX( 0 );
+-		int d=t-bbMilliSecs();	//how long left to wait
++		bb_int_t d=t-bbMilliSecs();	//how long left to wait
+ 		if( d<=0 ) return;
+ 		if( d>100 ) d=100;
+ #ifdef BB_WINDOWS
+@@ -88,12 +88,9 @@ bb_int_t BBCALL bbMilliSecs(){
+ #ifdef BB_WINDOWS
+ 	return timeGetTime();
+ #else
+-	int t;
+-	struct timeval tv;
+-	gettimeofday(&tv,0);
+-	t=tv.tv_sec*1000;
+-	t+=tv.tv_usec/1000;
+-	return t-base_time;
++	using Clock=std::chrono::steady_clock;
++	static const auto start=Clock::now();
++	return std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now()-start).count();
+ #endif
+ }
+ 
+@@ -206,7 +203,7 @@ BBMODULE_CREATE( system ){
+ 	bbSystemDriver=0;
+ 	bbSystemProperties["appdir"]=bbApp().executable_path;
+ #ifndef BB_WINDOWS
+-	base_time=bbMilliSecs();
++	(void)bbMilliSecs();
+ #endif
+ 	return true;
+ }
+diff --git a/src/modules/bb/timer/timer.noop.cpp b/src/modules/bb/timer/timer.noop.cpp
+index e0697db..02327b7 100644
+--- a/src/modules/bb/timer/timer.noop.cpp
++++ b/src/modules/bb/timer/timer.noop.cpp
+@@ -1,17 +1,27 @@
+ #include <bb/timer/timer.h>
++#include <chrono>
++#include <thread>
++#include <limits>
+ 
+-class NoopTimer : public BBTimer{
+-protected:
+-	int hertz;
++// Monotonic, cumulative timer matching Blitz WaitTimer catch-up semantics.
++class PosixTimer : public BBTimer {
++    using Clock = std::chrono::steady_clock;
++    Clock::time_point start;
++    long long ticks = 0;
++    int hertz;
+ public:
+-	NoopTimer( int h ):hertz(h){}
+-	~NoopTimer(){}
+-
+-	int wait(){
+-		return 0; // FIXME: implement this properly.
+-	}
++    explicit PosixTimer(int h): start(Clock::now()), hertz(h > 0 ? h : 1) {}
++    int wait() override {
++        const auto deadline = start + std::chrono::nanoseconds(
++            ((ticks + 1) * 1000000000LL + hertz - 1) / hertz);
++        std::this_thread::sleep_until(deadline);
++        const auto nanos = std::chrono::duration_cast<std::chrono::nanoseconds>(Clock::now() - start).count();
++        const long long elapsed = nanos * hertz / 1000000000LL;
++        const long long pending = elapsed - ticks;
++        const int result = static_cast<int>(pending > std::numeric_limits<int>::max() ? std::numeric_limits<int>::max() : pending);
++        ticks += result;
++        return result;
++    }
+ };
+ 
+-BBTimer * BBCALL _osCreateTimer( int hertz ){
+-	return new NoopTimer( hertz );
+-}
++BBTimer * BBCALL _osCreateTimer(int hertz) { return new PosixTimer(hertz); }
+diff --git a/src/stdutil/stdutil.cpp b/src/stdutil/stdutil.cpp
+index 1e38ad6..69fa36d 100644
+--- a/src/stdutil/stdutil.cpp
++++ b/src/stdutil/stdutil.cpp
+@@ -1,3 +1,4 @@
++#include <filesystem>
+ 
+ #include "stdutil.h"
+ 
+@@ -384,8 +385,36 @@ std::string canonicalpath( const std::string &t ){
+ 	return lower(s);
+ #else
+ 	replace( s.begin(),s.end(),'\\','/' );
++#ifdef BB_LINUX
++	// Original Windows assets contain mixed-case extensions and references.
++	// Resolve missing components without adding aliases to directory listings.
++	namespace fs=std::filesystem;
++	std::error_code ec;
++	if( fs::exists(fs::path(s),ec) ) return s;
++	fs::path resolved;
++	for( const auto &component: fs::path(s) ){
++		fs::path exact=resolved/component;
++		ec.clear();
++		if( fs::exists(exact,ec) || component=="." || component==".." ){
++			resolved=exact;
++			continue;
++		}
++		const std::string wanted=tolower(component.string());
++		bool found=false;
++		ec.clear();
++		fs::directory_iterator it(resolved.empty()?fs::path("."):resolved,ec), end;
++		for( ; !ec && it!=end; it.increment(ec) ){
++			if( tolower(it->path().filename().string())==wanted ){
++				resolved=it->path(); found=true; break;
++			}
++		}
++		if( !found ) resolved=exact;
++	}
++	return resolved.string();
++#else
+ 	return s;
+ #endif
++#endif
+ }
+ 
+ const int MIN_SIZE=256;
+diff --git a/src/tools/CMakeLists.txt b/src/tools/CMakeLists.txt
+index 319adbc..a02343a 100644
+--- a/src/tools/CMakeLists.txt
++++ b/src/tools/CMakeLists.txt
+@@ -2,7 +2,7 @@ set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ${ENABLE_LTO})
+ 
+ IF(BB_DESKTOP AND NOT BB_CROSSCOMPILE)
+   add_subdirectory(compiler)
+-  add_subdirectory(blitzide2)
++  # Native CLI build: omit IDE
+   add_subdirectory(bblaunch2)
+ 
+   IF(BB_WINDOWS)
+diff --git a/src/tools/compiler/CMakeLists.txt b/src/tools/compiler/CMakeLists.txt
+index 523b539..254d366 100644
+--- a/src/tools/compiler/CMakeLists.txt
++++ b/src/tools/compiler/CMakeLists.txt
+@@ -1,7 +1,7 @@
+ set (CMAKE_EXECUTABLE_SUFFIX_ )
+ 
+ if(BB64 AND NOT BB_MINGW)
+-  set(REQUIRED_LLVM_VERSION 19)
++  set(REQUIRED_LLVM_VERSION 19.1.7)
+ 
+   set(LLVM_KNOWN_PATHS
+     $ENV{LLVM_ROOT}
+@@ -134,7 +134,7 @@ else()
+ endif()
+ 
+ if(BB_LINUX AND BB_GNU)
+-  set(LIBARCH_DIR /usr/lib/x86_64-linux-gnu) # TODO: should find a way to derive this... `gcc -v` + parsing is an option.
++  set(LIBARCH_DIR /opt/hardtime-toolchain/lib) # TODO: should find a way to derive this... `gcc -v` + parsing is an option.
+   execute_process(COMMAND gcc --print-file-name= OUTPUT_VARIABLE LIBGCC_DIR OUTPUT_STRIP_TRAILING_WHITESPACE)
+ 
+   target_compile_definitions(blitzcc PRIVATE LIBARCH_DIR="${LIBARCH_DIR}" LIBGCC_DIR="${LIBGCC_DIR}")
+@@ -187,7 +187,7 @@ if(LLVM_FOUND)
+   elseif(BB_MACOS)
+     target_link_libraries(blitzcc lldMachO)
+   endif()
+-  target_link_libraries(blitzcc lldWasm lldELF ${LLVM_LIBS} zlibstatic)
++  target_link_libraries(blitzcc lldWasm lldELF LLVM zlibstatic)
+ endif()
+ 
+ if(BB_COVERAGE)
+diff --git a/src/tools/compiler/codegen_llvm/codegen_llvm.cpp b/src/tools/compiler/codegen_llvm/codegen_llvm.cpp
+index 287b029..0112ab9 100644
+--- a/src/tools/compiler/codegen_llvm/codegen_llvm.cpp
++++ b/src/tools/compiler/codegen_llvm/codegen_llvm.cpp
+@@ -283,6 +283,10 @@ void Codegen_LLVM::restoreData( int count ){
+ }
+ 
+ int Codegen_LLVM::dumpToObj( std::string &out ) {
++	// End and RuntimeError unwind through generated BASIC frames.
++	for( auto &function : *module ){
++		if( !function.isDeclaration() ) function.setUWTableKind(llvm::UWTableKind::Async);
++	}
+ 	llvm::raw_string_ostream sstr( out );
+ 	llvm::buffer_ostream dest( sstr );
+ 
+diff --git a/src/tools/compiler/linker_lld/linker_lld.cpp b/src/tools/compiler/linker_lld/linker_lld.cpp
+index 6155d80..703ca42 100644
+--- a/src/tools/compiler/linker_lld/linker_lld.cpp
++++ b/src/tools/compiler/linker_lld/linker_lld.cpp
+@@ -157,13 +157,16 @@ void Linker_LLD::createExe( bool debug,const std::string &rt,const Target &targe
+ #endif
+ #ifdef BB_LINUX
+ 		args.push_back( "--gc-sections" );
++		args.push_back( "--eh-frame-hdr" );
+ #endif
+ 	}else if( ios ){
+ 		args.push_back( "-dead_strip" );
+ 	}else if( android ){
+ 		args.push_back( "--gc-sections" );
++		args.push_back( "--eh-frame-hdr" );
+ 	}else if( nx ){
+ 		args.push_back( "--gc-sections" );
++		args.push_back( "--eh-frame-hdr" );
+ 	}
+ 
+ 	if( target.type=="ovr" ){
+@@ -396,7 +399,7 @@ void Linker_LLD::createExe( bool debug,const std::string &rt,const Target &targe
+ 
+ 	if( target.host ){
+ #ifdef BB_LINUX
+-		args.push_back("-dynamic-linker");args.push_back("/lib64/ld-linux-x86-64.so.2");
++		args.push_back("-dynamic-linker");args.push_back("/lib/ld-linux-aarch64.so.1");
+ 
+ 		// TODO: find out the best way to get this information from the environment
+ 		// TODO: gcc --print-file-name=libc.a
+diff --git a/src/tools/compiler/tree/expr/cast.cpp b/src/tools/compiler/tree/expr/cast.cpp
+index 8cdb6b0..cda3abd 100644
+--- a/src/tools/compiler/tree/expr/cast.cpp
++++ b/src/tools/compiler/tree/expr/cast.cpp
+@@ -61,7 +61,9 @@ TNode *CastNode::translate( Codegen *g ){
+ llvm::Value *CastNode::translate2( Codegen_LLVM *g ){
+ 	llvm::Value *t=expr->translate2( g );
+ 	if( expr->sem_type==Type::float_type && sem_type==Type::int_type ){
+-		//float->int
++		// Blitz/x87 conversions round to nearest, ties to even. Truncating
++		// breaks integer Rnd(0,1) choices and can trap gameplay AI loops.
++		t=g->builder->CreateUnaryIntrinsic(llvm::Intrinsic::roundeven,t);
+ 		return g->builder->CreateFPToSI( t,g->intTy );
+ 	}
+ 	if( expr->sem_type==Type::int_type && sem_type==Type::float_type ){
+diff --git a/src/tools/compiler/tree/expr/float_const.cpp b/src/tools/compiler/tree/expr/float_const.cpp
+index b997653..c703949 100644
+--- a/src/tools/compiler/tree/expr/float_const.cpp
++++ b/src/tools/compiler/tree/expr/float_const.cpp
+@@ -1,4 +1,5 @@
+ #include "float_const.h"
++#include <cmath>
+ 
+ ////////////////////
+ // Float constant //
+@@ -24,7 +25,10 @@ int FloatConstNode::intValue(){
+ 	_control87( _CW_DEFAULT,0xfffff );
+ 	return temp;
+ #else
+-	return value;
++	// Match the x87 nearest-even conversion used by the original compiler.
++	double lower=std::floor(value);
++	double fraction=value-lower;
++	return static_cast<int>(fraction>0.5 || (fraction==0.5 && std::fmod(lower,2.0)!=0.0) ? lower+1.0 : lower);
+ #endif
+ }
+ 
+diff --git a/src/tools/compiler/tree/expr/rel_expr.cpp b/src/tools/compiler/tree/expr/rel_expr.cpp
+index 369e320..95c7cff 100644
+--- a/src/tools/compiler/tree/expr/rel_expr.cpp
++++ b/src/tools/compiler/tree/expr/rel_expr.cpp
+@@ -71,7 +71,9 @@ llvm::Value *RelExprNode::translate2( Codegen_LLVM *g ){
+ 	auto *r=rhs->translate2( g );
+ 
+ 	auto *t=compare2( op,l,r,opType,g );
+-	return g->builder->CreateIntCast( t,Type::int_type->llvmType( g->context.get() ),true );
++	// Blitz comparisons return canonical 1/0, matching constant folding and
++	// the x86 SETcc/MOVZX implementation. Sign-extending i1 yields -1.
++	return g->builder->CreateIntCast( t,Type::int_type->llvmType( g->context.get() ),false );
+ }
+ #endif
+ 
+diff --git a/src/tools/compiler/tree/stmt/while.cpp b/src/tools/compiler/tree/stmt/while.cpp
+index 86d5134..713d82f 100644
+--- a/src/tools/compiler/tree/stmt/while.cpp
++++ b/src/tools/compiler/tree/stmt/while.cpp
+@@ -49,7 +49,8 @@ void WhileNode::translate2( Codegen_LLVM *g ){
+ 		auto body=llvm::BasicBlock::Create( *g->context,"body" );
+ 
+ 		auto v=expr->translate2( g );
+-		v=g->builder->CreateIntCast( v,llvm::Type::getInt1Ty( *g->context ),true ); // TODO: this is a hack and hopefully optimized out...
++		// Every nonzero integer is true; truncating to i1 tests only its low bit.
++		v=compare2( NE,v,0,expr->sem_type,g );
+ 
+ 		g->builder->CreateCondBr( v,body,next );
+ 

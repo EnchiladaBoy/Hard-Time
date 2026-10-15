@@ -1,0 +1,31 @@
+# Downloaded sources, dependencies, build output and local installs
+/.work/
+/dist/
+/build/
+/toolchain/
+/runtime/
+/game/
+/native-game/
+/backups/
+/logs/
+/Photo Album/
+__pycache__/
+*.pyc
+*.o
+*.a
+*.so
+*.so.*
+*.exe
+*.dll
+*.rpm
+*.zip
+*.tar.*
+*.log
+# Local credentials and editor files
+.env
+.env.*
+*.pem
+*.key
+.vscode/
+.idea/
+*~

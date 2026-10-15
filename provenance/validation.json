@@ -1,0 +1,46 @@
+{
+  "status": "Historical focused validation of the installed native preview; not a full playthrough or a claim that every future build is identical.",
+  "date": "2026-10-15",
+  "platform": {
+    "os": "Fedora 44",
+    "architecture": "aarch64",
+    "cpu_count": 4,
+    "renderer": "Mesa 26.2.4 llvmpipe",
+    "hardware_3d_acceleration": false
+  },
+  "tested_executable_sha256": "c79ea81dce9fa9e201ae06fb54a09f75ba95e3c71673ca8b8830e28a57c75ae0",
+  "engine": {
+    "repository": "https://github.com/blitz3d-ng/package",
+    "commit": "d8d5d1be34dfac328e15d9e9b831d9572cde9d0f"
+  },
+  "passed": [
+    "Native ARM64 startup and textured 3D gameplay",
+    "Keyboard movement and wall collision",
+    "Normal hall-to-hospital doorway transition",
+    "Audio playback and all 90 WAV formats decoded",
+    "Native save and nonblack 150x100 RGB character photograph",
+    "Native save loaded and resaved in the untouched original Windows executable, then reloaded and resaved in the native build",
+    "Installed desktop keyboard menu navigation and exit status 0",
+    "All 54 files in each live save/settings directory remained unchanged during the installed menu test"
+  ],
+  "native_frame_sample": {
+    "observed_updates_per_second_lower_bound": 23.627,
+    "duration_seconds": 15,
+    "resolution": [
+      800,
+      600
+    ],
+    "scene": "busy prison hall with guard",
+    "method": "Window-pixel change sampling; not internal engine FPS",
+    "raw_numeric_sample_file_available": false,
+    "evidence_limit": "Value retained in the original build provenance; raw numeric sample file is unavailable. Original first/last screenshots remain in local research."
+  },
+  "limits": [
+    "Full playthrough and all areas are not covered",
+    "No physical controller test",
+    "No general Linux distribution compatibility claim; build from source for your host",
+    "Post-Flip framebuffer retention tested on Mesa only",
+    "Direct WritePixel to the window framebuffer remains an unused upstream limitation",
+    "Repository portability/build-script changes require their own checks; historical gameplay evidence belongs to the executable hash above"
+  ]
+}

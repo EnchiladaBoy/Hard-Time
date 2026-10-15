@@ -1,0 +1,36 @@
+Native graphics compatibility fixes, 2026-10-15
+
+Game paths exercised: offscreen images, masks, backbuffer capture, character
+photos, resize, BMP save/reload, text and transparent image drawing.
+
+- Initialized canvas state, corrected the backbuffer object, and made front/
+  back draw/read buffer selection explicit.
+- Matched original DirectDraw origin/handle adjustment in bitmap blits and
+  honored masked drawing for tiled images.
+- Implemented pixel reads/writes with nested locking and canonical top-down
+  RGBA storage. Render-target textures retain their GL bottom-up orientation;
+  textured quads select the appropriate vertical coordinates.
+- Preserve rendered image contents when a subsequent MaskImage changes the
+  color key. Restore both draw/read framebuffer bindings after capture.
+- Changing a non-current image's viewport no longer clips the active screen.
+- Implemented portable little-endian 24-bit BMP output rather than the
+  upstream POSIX SaveImage stub. Original file row padding and BGR order match.
+- Fixed uniform block alignment, vertex-array identity checks, texture unit
+  selection, bitmap allocation cleanup and canvas GL resource cleanup.
+- CMake now tracks changes to the embedded 2D shader source.
+
+Validation:
+  graphics-smoke.bb exits 0 and verifies colored pixel positions through
+  GrabImage -> ResizeImage -> SaveImage -> LoadImage -> DrawImage; also tests
+  an 8x8 portrait capture followed by drawing outside the capture rectangle,
+  ImageBuffer drawing, magenta transparency, and WritePixel roundtrip.
+  graphics-postflip-smoke.bb repeats capture after Flip, as game saving does;
+  passes on this Mesa/Xvfb setup. This does not promise swap-buffer retention
+  on every other GL driver.
+  BMP files independently opened with Pillow with expected dimensions/colors.
+
+Known API boundary: direct WritePixel to the window framebuffer remains an
+upstream limitation; the original Hard Time source does not use that API.
+Tests target the game's actual image/photo paths, not every Blitz3D command.
+Build the patched engine using this repository's scripts; historical one-time
+research edit scripts are not required.

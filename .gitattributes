@@ -1,0 +1,2 @@
+# Patch context preserves the original BASIC and engine whitespace.
+*.patch -whitespace

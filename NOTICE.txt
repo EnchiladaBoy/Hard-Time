@@ -1,0 +1,17 @@
+Original Hard Time is Copyright (C) Mat Dickie 2007.
+
+The archived game source retains this condition:
+"This program may not be re-released under any other identity or sold
+commercially without express permission."
+
+This repository retains the Hard Time identity and original credits. Game
+assets, installers, original executables and player save data are not included.
+The independently hosted source archive is documented in provenance/; it is
+not represented as an authenticated original release.
+
+Blitz3D was released by Blitz Research Ltd under the zlib/libpng license.
+The original notice is preserved in docs/BLITZ3D-LICENSE.txt. The engine patch
+is an altered version and is not the original Blitz Research or Blitz3D NG
+release. Upstream dependencies retain their own notices in fetched source
+trees. This repository does not assign a new blanket license to the game,
+engine or their dependencies.

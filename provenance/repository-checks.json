@@ -1,0 +1,76 @@
+{
+  "date": "2026-10-15",
+  "scope": "Repository test runner against the already-built, corrected native compiler/runtime; separate from a fresh repository engine build.",
+  "platform": "Fedora 44 ARM64, Mesa llvmpipe, private Xvfb display",
+  "regressions": [
+    {
+      "name": "boolean-smoke",
+      "passed": true
+    },
+    {
+      "name": "rounding-smoke",
+      "passed": true
+    },
+    {
+      "name": "semantics",
+      "passed": true
+    },
+    {
+      "name": "runtime-smoke",
+      "passed": true
+    },
+    {
+      "name": "graphics-smoke",
+      "passed": true
+    },
+    {
+      "name": "material-smoke",
+      "passed": true
+    },
+    {
+      "name": "font-smoke",
+      "passed": true
+    },
+    {
+      "name": "hud-fit-smoke",
+      "passed": true
+    },
+    {
+      "name": "graphics-postflip-smoke",
+      "passed": true
+    }
+  ],
+  "analysis_tool": {
+    "result": "pass",
+    "input_sha256": "0f5009d31e4459ecb28e55dfce95bd15e488a009c24326e0719e3181058865dd",
+    "symbols": 10735,
+    "relative_relocations": 24339,
+    "absolute_relocations": 32724
+  },
+  "original_engine_patch_sha256": "66a8d644c851a31bf28c93c960a2fa549b50d0dc6ae1d374e686a78b2871e2e1",
+  "source_preparation": {
+    "result": "pass",
+    "method": "Clean checkout at pinned revisions, using local Git objects for engine/dependencies; all 18 original BASIC SHA256 values verified; all five patches applied."
+  },
+  "cmake_configuration": {
+    "result": "pass",
+    "method": "Configure-only against the optional existing native ARM64 development environment; full fresh engine build not run in this repository setup."
+  },
+  "installer_fixture": {
+    "initial_private_copy": true,
+    "reinstall_preserves_data_and_photos": true,
+    "original_data_unchanged": true,
+    "asset_links": true,
+    "launcher_from_other_working_directory": true,
+    "backup_before_run": true,
+    "clean_exit_logged": true,
+    "method": "Temporary synthetic assets and a shell stub; no real game/save directories used."
+  },
+  "repository_patch_sha256": {
+    "build-dependency-sdl.patch": "25f852554995f164cb61fe62884a63c2a035755b6a878bcaa61166339c31eef8",
+    "build-dependency-vorbis.patch": "190527850d20dd3a82af48acfa514d75f6a1d3e8c7c60ebf2493c5ba62a6fd73",
+    "engine-linux-arm64.patch": "b65394bfe210acced97cebcc071251bba461a3530028a769c9e0d1b3ac4dca0b",
+    "game-linux.patch": "ca59f2a40ecc7fda33111b7e13c8ec1ca2b122167510103cf088ff5ceb5b99cb",
+    "portable-build.patch": "105bb1cd2cdb4dc2f1cf884f5deb93dfd3947ad802a0223022272410dc6b38c3"
+  }
+}

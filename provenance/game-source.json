@@ -1,0 +1,31 @@
+{
+  "repository": "https://github.com/softbie/hardtime-rebirth",
+  "commit": "7fdfd95a71cc5b29974928b9a1151c1f3d6d0768",
+  "origin_note": "Initial repository commit. Files retain original MDickie 2007 copyright and conditions. This is an independently hosted source archive, not an authenticated original MDickie release. No source files changed.",
+  "downloaded_at": "2026-10-15",
+  "files_sha256": {
+    "AI.bb": "e02980754111b5d841799aa2cef150bb343bca53f3664658acd10e44547354d2",
+    "Anims.bb": "a725bd5402b9620f092509a6de55d6b5124e92dad4c6780b9db7138564d4105c",
+    "Credits.bb": "efc54e1e95079baa136c74d650d68353d2e733da49b4c59af1642893463f0a3c",
+    "Crimes.bb": "1faf651233bc8c0bad0f34c59e0649abccd8f3e5fabe372291023b6e697f4b80",
+    "Data.bb": "293fdd52b55533c2cee270de5fed6e8252cbcef7182d412427d3255252d5773e",
+    "Editor.bb": "ad202f29aa772a14cee850657bf508743acbd2628e36c8609e13b51d1d2734ef",
+    "Functions.bb": "d7bce7a3d914dd924d9a8254a33e68f0c4ba4da99db11868455b778d418be8db",
+    "Gameplay.bb": "cd606d2b2d2e31cf8043de51c6465efe7eb37ed9e1c39dc4ee7a2691bc4a6fce",
+    "Menus.bb": "af3db4742627ea8d412c77e5f3e5bbd46dfe2bc7d18bf9ec10d902108687b37c",
+    "Missions.bb": "50e3ad8eb5cb7717d1236e74461f57b15c1d076ab296d5987f48b7cbbf623f78",
+    "Moves.bb": "59a8048cbd6e7ae0852251046e6e6d65676922daf6ca96db8902a40daad11f3c",
+    "Particles.bb": "361e16738307aa7112c6342e0a286a9aa932a5b7c09789c86d45b8543cd17885",
+    "Players.bb": "0093f750e170e7739e02a248b9993ddfa6cef488955510e6f20248c3fe512ea6",
+    "Promos.bb": "8753168206d9a82d63f7f80b8a5d75635635a5bf2c7b943ef4be138ebc68c54a",
+    "Texts.bb": "ca9802cb80c4fd6d31048b8fb721ea00c4b2667d1faf6952e701c0dae3d2a72a",
+    "Values.bb": "3247e6312b7d5226b1153f3ca2752d71a6643741b45512a52ee72a31d19ea5ce",
+    "Weapons.bb": "f8f8be3ebd62778be33835499969fa0fc4801b25e5e10f8fe20726e99f5e4c53",
+    "World.bb": "ca53343382f5507e79174ff744229b27c04be5b7ca371b1c12783c3839d80842"
+  },
+  "function_count": 233,
+  "binary_function_count": 233,
+  "missing_from_source": [],
+  "extra_in_source": [],
+  "comparison_limit": "Matching function names establish very close correspondence; not a byte-for-byte rebuild or proof all source contents match."
+}

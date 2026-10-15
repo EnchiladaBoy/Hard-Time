@@ -1,0 +1,13 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index e2eeaed..2893924 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -3019,7 +3019,7 @@ list(APPEND SDL_GENERATED_HEADERS ${SDL2_COPIED_INCLUDE_FILES})
+ 
+ if(CMAKE_STATIC_LIBRARY_PREFIX STREQUAL "" AND CMAKE_STATIC_LIBRARY_SUFFIX STREQUAL ".lib")
+   # Avoid conflict between the dll import library and the static library
+-  set(sdl_static_libname "SDL2-static")
++  set(sdl_static_libname "SDL2")
+ else()
+   set(sdl_static_libname "SDL2")
+ endif()

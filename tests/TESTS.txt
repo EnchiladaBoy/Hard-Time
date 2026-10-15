@@ -1,0 +1,98 @@
+Native ARM64 regression tests
+
+These small BASIC programs exercise compatibility fixes without game assets,
+save files, or photographs. The runner compiles each program with the built
+Blitz compiler, verifies ELF64 AArch64 output, runs it in a fresh temporary
+directory, and checks generated results. Existing game installations are not
+used. Python 3.9 or newer is required.
+
+Usage after building the engine and compiler:
+  python3 tests/run.py
+  python3 tests/run.py --graphics
+  python3 tests/run.py --fonts
+  python3 tests/run.py --all
+  python3 tests/run.py --all --post-flip
+
+The default is the noninteractive numeric/boolean subset. --noninteractive
+explicitly selects that default. Every test initializes the OpenGL runtime,
+including the numeric tests, so an X display is required. For a private display:
+  xvfb-run -a -s "-screen 0 1024x768x24" python3 tests/run.py --all
+
+The X server must provide a suitable OpenGL context. The original validation
+used Mesa llvmpipe on Fedora ARM64. The runner defaults to SDL's X11 driver
+and OpenAL's null backend; this suite does not test audible sound. Existing
+SDL_VIDEODRIVER and ALSOFT_DRIVERS environment overrides are respected.
+
+Compiler discovery, in order:
+  --blitzpath RELEASE_DIRECTORY
+  BLITZPATH or blitzpath environment variable
+  --build-root DIRECTORY, then HARDTIME_WORK_DIR, HARDTIME_BUILD_ROOT,
+    BUILD_ROOT, or this repository's .work directory
+
+For a build root, release/bin/blitzcc, engine/_release/bin/blitzcc,
+_release/bin/blitzcc and bin/blitzcc are recognized. The compiler receives
+the lowercase blitzpath environment variable required by upstream Blitz.
+Build-specific loader/library environment variables are inherited.
+
+Outputs go into a new hardtime-native-tests-* temporary directory whose path
+is printed. Each test has build.log, run.log and its synthetic output files.
+results.json records outcomes. Outputs remain available for diagnosis; they
+are not written into this repository. Exit status is 0 only when all selected
+tests pass, 1 for a failed test, and 2 for setup problems. Executables have a
+30-second timeout by default; compilation has a 120-second timeout.
+
+Core tests
+  boolean-smoke: integer/float/string comparisons return true=1 and false=0;
+    Not, If/While/Until with even nonzero integers, bitwise And and descending
+    For loops. The complete PASS line is compared with expected output.
+  rounding-smoke: implicit and explicit float-to-int conversions, literal
+    folding and two interleaved seeded random streams. Exact expected output
+    is checked, including ties-to-even (0.5->0, 1.5->2, 2.5->2, negatives too)
+    and random counts 5071,4929,4997,5003.
+  semantics: 14 numeric conversions and seeded random distributions. The
+    expected output matches the legacy Blitz3D 1.108 run made during porting.
+    Separate 10,000-sample Rnd streams produce 5055/4945 counts. This program
+    only records results itself; the runner performs the exact comparison.
+
+--graphics additionally checks
+  runtime-smoke: signed int32 extrema, float32/string serialization, color
+    getters and monotonic 30 Hz timers. The runner independently checks the
+    exact 37 serialized bytes. Five timer waits produce at least five ticks;
+    a 120 ms stall produces at least three catch-up ticks. Total elapsed time
+    must be 250..1000 ms. Excessive host load can fail that timing bound.
+  graphics-smoke: offscreen drawing, transparency, buffer capture, image
+    resize, BMP save/reload, pixel access and viewport restoration. The runner
+    also independently parses the emitted BMP dimensions and selected RGB
+    pixels using Python's standard library.
+  material-smoke: a red texture rendered in each layer 0..7, a disabled stage
+    before an active stage, and a second texture's lazy upload. Actual rendered
+    center pixels must remain red.
+
+--fonts additionally checks
+  font-smoke: ten load/render/free cycles of 95 printable ASCII characters
+    at 96 px. Requires the intended Comfortaa installation for representative
+    metrics. The runner checks completion and positive width/96 px height;
+    it does not prove each glyph's pixels or detect all memory leaks.
+  hud-fit-smoke: label/100% value spacing with Liberation Sans regular/bold.
+    All 30 computed outline gaps must be nonnegative. The original fonts gave
+    a minimum 4.5 px gap. The resolution labels cover 640..1600, but the test
+    uses fixed-pixel HUD geometry and does not resize the actual window.
+
+--post-flip is separate because it checks backbuffer retention after buffer
+swap, which depends on the GL driver. graphics-postflip-smoke passed on the
+original Mesa/Xvfb setup; this is not a promise for all swap-buffer behavior.
+
+Interactive and full-game validation
+  Keyboard/text/mouse recording, real audio playback, native save/photo
+  creation, room transitions, wall collision, and native/original-Windows
+  save roundtrips were checked during development. They are not automated by
+  this source-only suite. Test those with your own game data in a disposable
+  installation. No recorded input test is presented as an automatic PASS.
+  Long playthroughs, gamepad hardware, and other graphics drivers remain open.
+
+Source provenance
+  SOURCE-MANIFEST.json records the SHA256 of the unchanged development test
+  sources. Run python3 tests/run.py --verify-sources to check only these
+  hashes. Expected text files normalize CRLF to LF; no user paths or game
+  saves are included. When intentionally editing a regression, update its
+  manifest hash and expected results after reviewing the changed behavior.

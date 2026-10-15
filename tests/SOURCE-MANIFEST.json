@@ -1,0 +1,14 @@
+{
+  "origin": "Focused native ARM64 regressions created during port development; unchanged BASIC sources",
+  "sha256": {
+    "sources/boolean-smoke.bb": "a19f3474a1d0fb75ba42e03ba230f65df550f45fce744514a6d69d2b104bfbc0",
+    "sources/rounding-smoke.bb": "7dd98d975918af34cf48fe55b392c76d59aa59dcb9aa5a1d56859aaf47721b31",
+    "sources/semantics.bb": "ed62b16dbf5c802e49d2226be2152680ff77ec09163911df4ecd07f2cad5548b",
+    "sources/runtime-smoke.bb": "38cc123fbbf6659080f23abd12a037d28dff350b824555ebbcf91875570c41e4",
+    "sources/graphics-smoke.bb": "c739843b8774b19e90450c740f7b9662e72cb109524d7b5fdfd0e6ffd2976d59",
+    "sources/graphics-postflip-smoke.bb": "ab01dcd57141dd59e856ec7d5a4960656b750012848cbea3df73c694a81dfe7c",
+    "sources/material-smoke.bb": "a95b7a60a4871bb3435234fa0e3954733602c213c1fbef81a96e6414759b1d40",
+    "sources/font-smoke.bb": "4ea660bd491ac73546bf1f912684ae71a358274f1ce94eb7b61c5d909c25d613",
+    "sources/hud-fit-smoke.bb": "d2b27b9dbde5ad096f174ee598c6f6c65a716957ee63e3515202aacecb01318b"
+  }
+}

@@ -1,0 +1,111 @@
+--- original/Credits.bb
++++ native/Credits.bb
+@@ -7,13 +7,13 @@
+ ;//////////////////////////////////////////////////////////////////////////////
+ Function Intro()
+ ;initial media
+-font(0)=LoadFont("Kristen ITC.ttf",13,0,0,0)
+-font(1)=LoadFont("Kristen ITC.ttf",16,0,0,0)
+-font(2)=LoadFont("Kristen ITC.ttf",20,0,0,0)
+-font(3)=LoadFont("Kristen ITC.ttf",24,0,0,0)
+-font(4)=LoadFont("Kristen ITC.ttf",36,0,0,0)
+-font(5)=LoadFont("Kristen ITC.ttf",42,0,0,0)
+-font(6)=LoadFont("Kristen ITC.ttf",48,0,0,0)
++font(0)=LoadFont("Comfortaa",13,0,0,0)
++font(1)=LoadFont("Comfortaa",16,0,0,0)
++font(2)=LoadFont("Comfortaa",20,0,0,0)
++font(3)=LoadFont("Comfortaa",24,0,0,0)
++font(4)=LoadFont("Comfortaa",36,0,0,0)
++font(5)=LoadFont("Comfortaa",42,0,0,0)
++font(6)=LoadFont("Comfortaa",48,0,0,0)
+ gTile=LoadImage("Graphics/Tile.png")
+ MaskImage gTile,255,0,255
+ For count=1 To 3
+--- original/Gameplay.bb
++++ native/Gameplay.bb
+@@ -32,7 +32,7 @@
+ ChangeResolution(optRes,0)
+ SetBuffer BackBuffer()
+ AutoMidHandle True
+-EnableDirectInput True
++; Linux SDL input backend replaces EnableDirectInput True
+ SeedRnd(MilliSecs())   
+ 
+ ;LOADING PROCESS
+@@ -759,13 +759,13 @@
+  EndIf
+  DrawImage gHappiness,rX#(x)+68,rY#(y)+8 
+  ;attribute headers
+- SetFont font(1)
++ SetFont fontHud
+  Outline("Strength:",rX#(x)+112,rY#(y)-22,0,0,0,255,255,255)
+  Outline("Agility:",rX#(x)+201,rY#(y)-22,0,0,0,255,255,255)
+- Outline("Intelligence:",rX#(x)+104,rY#(y)+24,0,0,0,255,255,255)
++ Outline("Intelligence:",rX#(x)+102,rY#(y)+24,0,0,0,255,255,255)
+  Outline("Reputation:",rX#(x)+211,rY#(y)+24,0,0,0,255,255,255)
+  ;attribute numbers
+- SetFont fontNumber
++ SetFont fontHudNumber
+  GetStatColour(1)
+  Outline(charStrength(char)+"%",rX#(x)+158,rY#(y)-22,0,0,0,ColorRed(),ColorGreen(),ColorBlue())
+  GetStatColour(2)
+--- original/Menus.bb
++++ native/Menus.bb
+@@ -703,11 +703,11 @@
+  ;assess preferences
+  width=Int(textResX$(resolution))
+  height=Int(textResY$(resolution))
+- If GfxMode3DExists(width,height,16)=0 Then width=800 : height=600 : optRes=2
++ If GfxMode3DExists(width,height,32)=0 Then width=800 : height=600 : optRes=2
+  ;make transition?
+  If width<>GraphicsWidth() Or height<>GraphicsHeight()
+   If task>0 Then Loader("Please Wait","Adjusting Resolution")
+-  Graphics3D width,height,16,1
++  Graphics3D width,height,32,2
+   If task>0 ;restore media
+    LoadImages()
+    Loader("Please Wait","Restoring Media")
+--- original/Values.bb
++++ native/Values.bb
+@@ -410,7 +410,7 @@
+ ;variables
+ Dim font(10)
+ Dim fontTest(10)
+-Global fontNumber,fontComputer
++Global fontNumber,fontComputer,fontHud,fontHudNumber
+ Global fontMoney,fontClock
+ Dim gLogo(3)
+ Dim gMenu(10)
+@@ -421,18 +421,21 @@
+ ;LOADING PROCESS
+ Function LoadImages()
+  ;main fonts
+- font(0)=LoadFont("Kristen ITC.ttf",13,0,0,0)
+- font(1)=LoadFont("Kristen ITC.ttf",16,0,0,0)
+- font(2)=LoadFont("Kristen ITC.ttf",20,0,0,0)
+- font(3)=LoadFont("Kristen ITC.ttf",24,0,0,0)
+- font(4)=LoadFont("Kristen ITC.ttf",36,0,0,0)
+- font(5)=LoadFont("Kristen ITC.ttf",42,0,0,0)
+- font(6)=LoadFont("Kristen ITC.ttf",48,0,0,0)
++ font(0)=LoadFont("Comfortaa",13,0,0,0)
++ font(1)=LoadFont("Comfortaa",16,0,0,0)
++ font(2)=LoadFont("Comfortaa",20,0,0,0)
++ font(3)=LoadFont("Comfortaa",24,0,0,0)
++ font(4)=LoadFont("Comfortaa",36,0,0,0)
++ font(5)=LoadFont("Comfortaa",42,0,0,0)
++ font(6)=LoadFont("Comfortaa",48,0,0,0)
++ ;HUD fonts fit the original fixed-pixel stat columns at each resolution.
++ fontHud=LoadFont("Liberation Sans",12,0,0,0)
++ fontHudNumber=LoadFont("Liberation Sans:style=Bold",15,1,0,0)
+  ;novelty fonts
+- fontNumber=LoadFont("Verdana",15,1,0,0)
+- fontComputer=LoadFont("Small Fonts",16,0,0,0)
+- fontMoney=LoadFont("Times New Roman",32,1,0,0)
+- fontClock=LoadFont("Digital Readout Upright.ttf",26,1,0,0)
++ fontNumber=LoadFont("Liberation Sans:style=Bold",15,1,0,0)
++ fontComputer=LoadFont("Liberation Mono",16,0,0,0)
++ fontMoney=LoadFont("Liberation Serif:style=Bold",32,1,0,0)
++ fontClock=LoadFont("Liberation Mono:style=Bold",26,1,0,0)
+  ;tile
+  gTile=LoadImage("Graphics/Tile.png")
+  MaskImage gTile,255,0,255

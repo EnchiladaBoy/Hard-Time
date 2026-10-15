@@ -1,0 +1,36 @@
+NATIVE ARM64 COMPATIBILITY WORK
+
+The engine patch carries the fixes exercised by the local Linux port:
+
+- Recognize Linux aarch64 and select the ARM64 compiler target.
+- Emit unwind information so End and runtime errors can cross BASIC frames.
+- Match legacy BASIC nearest-even float-to-integer conversion, canonical
+  comparison results, and While tests accepting any nonzero value.
+- Keep serialized floats IEEE754 binary32 and integer files little-endian
+  int32 even though the new engine uses wider internal values.
+- Use a monotonic timer with elapsed-tick catch-up for the 30 Hz game loop.
+- Resolve original Windows-style asset paths on a case-sensitive filesystem.
+- Correct keyboard mappings, text input, mouse wheel, focus reset and joystick
+  index/range handling. Physical controller validation is still outstanding.
+- Implement OpenAL channel controls and decode the game's ADPCM WAV files.
+- Correct bitmap masks, capture, resize, BMP writing, framebuffer state,
+  dynamic font atlas allocation and sparse 3D texture-stage bindings.
+
+The game patch uses windowed SDL graphics, replaces unavailable Windows fonts
+with Comfortaa/Liberation, and fits the HUD fonts to the original pixel layout.
+It retains the original gameplay source and credits. The repository build
+workflow adds configurable paths so the local research machine's toolchain
+location is not required. See patches/ and scripts/ for the exact changes.
+
+Original executable analysis:
+  python3 tools/analyze_blitz.py '/path/to/Hard Time (Windowed).exe'
+
+The tool only reads the input. Generated .work/analysis/module-linked-analysis.bin
+contains synthetic external-call addresses for disassembly and must never be
+executed. The original PE32 RCDATA 1111 module contains 10,735 symbols, 24,339
+relative relocations and 32,724 absolute relocations. There are 233 named game
+functions. The original engine uses DirectDraw/Direct3D 7 and DirectInput 7.
+
+The optional --disassemble START END accepts module offsets or symbols and
+requires an objdump build with i386 support. Extraction itself uses only the
+Python standard library.

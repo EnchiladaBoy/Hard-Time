@@ -8,6 +8,9 @@ Status: experimental, with a playable Windows x64 build. Windows 11 testing
 uses app-local Mesa llvmpipe on a machine with Microsoft Basic Display Adapter.
 Menus, character creation, courtroom introduction, gameplay, movement,
 photographs, save/reload and saving on window close have been exercised.
+Normal gameplay now interpolates rendered frames independently of its original
+30 Hz simulation and targets display refresh. F11 toggles the FPS counter.
+Menus and scripted dialogue retain their original timing.
 Hardware graphics, physical controllers and a full playthrough remain untested
 on Windows. The Linux port retains its earlier Fedora 44 ARM64 validation.
 
@@ -72,6 +75,8 @@ tests need a working OpenGL display; passing them does not establish complete
 game compatibility. Historical gameplay results and their limits are recorded
 in provenance/validation.json. Windows build and test evidence is recorded
 separately in provenance/windows-validation.json.
+Refresh-rate changes and measurements are recorded separately in
+provenance/windows-refresh-validation.json.
 
 The historical Linux build showed about 23.6 displayed changes per second
 in a 15-second busy-hall sample at 800x600 on a four-vCPU software-rendered VM.

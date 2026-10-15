@@ -12,6 +12,8 @@
     "sources/hud-fit-smoke.bb": "d2b27b9dbde5ad096f174ee598c6f6c65a716957ee63e3515202aacecb01318b",
     "sources/texture-alpha-smoke.bb": "b66d801fd0ec82b8ef3a6ef7fc4fff512e68cc2a8f08c9c362c1a93866c1027d",
     "sources/window-close-smoke.bb": "0e16545a0d6e87ffff9d6f3a18f8d813c537fc05fa37ed218a3f034944939e50",
-    "sources/capture-repeat-smoke.bb": "e558ac77d043d89c372890eb05f197d2338f0ba15d3940c7beaa8ffc73ca71f0"
+    "sources/capture-repeat-smoke.bb": "e558ac77d043d89c372890eb05f197d2338f0ba15d3940c7beaa8ffc73ca71f0",
+    "sources/timer-poll-smoke.bb": "4b4e579c01dc33845e33c763088e36a26cf182dbeab3e449e512c105d59204ee",
+    "sources/interpolation-smoke.bb": "e16f8ecba91bde5c4c90b0b4f808d546b06180cf36c75bac350f0a45d97c3e36"
   }
 }

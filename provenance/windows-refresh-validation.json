@@ -1,0 +1,288 @@
+{
+  "date_utc": "2026-10-15T05:49:48.275756+00:00",
+  "scope": "Refresh-rate rendering for normal Windows gameplay; menus, loading, pause and scripted dialogue retain legacy timing.",
+  "host": {
+    "os": "Windows 11 Pro 10.0.26200 AMD64",
+    "display_adapter": "Microsoft Basic Display Adapter",
+    "renderer": "Mesa 26.2.4 llvmpipe, app-local",
+    "reported_display_frequency": 1,
+    "fallback_target_hz": 60
+  },
+  "implementation": {
+    "simulation_hz": 30,
+    "rendering": "PollTimer and CaptureWorld/RenderWorld interpolation; driver vsync with a software pacing fallback",
+    "rng": "Zero-tick HUD draws restore the gameplay RNG state and reuse the prior HUD seed",
+    "compatibility_override": "HARDTIME_ORIGINAL_FPS=1"
+  },
+  "measurement": {
+    "scene": "800x600, recreation room (location 9), disposable save slot 2",
+    "method": "Internal counters aggregated every two seconds; first eight complete samples after the loading sample, before movement/pause input",
+    "comparison": "Original blocking timing mode versus interpolated timing, each reloading the same copied Data directory; AI randomness is not locked between runs",
+    "limits": "Light test scene, not a busy-room benchmark; counts completed Flip calls, not physical scanout or remote-stream frames; 120/144 Hz hardware untested",
+    "results": {
+      "original-fps": {
+        "sample_seconds": 16.097,
+        "frames": 483,
+        "ticks": 483,
+        "fps": 30.005591103932407,
+        "simulation_hz": 30.005591103932407,
+        "two_second_samples": [
+          {
+            "elapsed_ms": "2030",
+            "frames": "61",
+            "ticks": "61",
+            "fps": "30.0493",
+            "simulation_hz": "30.0493",
+            "location": "9",
+            "promo": "0"
+          },
+          {
+            "elapsed_ms": "2000",
+            "frames": "60",
+            "ticks": "60",
+            "fps": "30.0",
+            "simulation_hz": "30.0",
+            "location": "9",
+            "promo": "0"
+          },
+          {
+            "elapsed_ms": "2032",
+            "frames": "61",
+            "ticks": "61",
+            "fps": "30.0197",
+            "simulation_hz": "30.0197",
+            "location": "9",
+            "promo": "0"
+          },
+          {
+            "elapsed_ms": "2000",
+            "frames": "60",
+            "ticks": "60",
+            "fps": "30.0",
+            "simulation_hz": "30.0",
+            "location": "9",
+            "promo": "0"
+          },
+          {
+            "elapsed_ms": "2001",
+            "frames": "60",
+            "ticks": "60",
+            "fps": "29.985",
+            "simulation_hz": "29.985",
+            "location": "9",
+            "promo": "0"
+          },
+          {
+            "elapsed_ms": "2032",
+            "frames": "61",
+            "ticks": "61",
+            "fps": "30.0197",
+            "simulation_hz": "30.0197",
+            "location": "9",
+            "promo": "0"
+          },
+          {
+            "elapsed_ms": "2000",
+            "frames": "60",
+            "ticks": "60",
+            "fps": "30.0",
+            "simulation_hz": "30.0",
+            "location": "9",
+            "promo": "0"
+          },
+          {
+            "elapsed_ms": "2002",
+            "frames": "60",
+            "ticks": "60",
+            "fps": "29.97",
+            "simulation_hz": "29.97",
+            "location": "9",
+            "promo": "0"
+          }
+        ]
+      },
+      "refresh-fps": {
+        "sample_seconds": 16.07,
+        "frames": 947,
+        "ticks": 482,
+        "fps": 58.929682638456754,
+        "simulation_hz": 29.99377722464219,
+        "two_second_samples": [
+          {
+            "elapsed_ms": "2013",
+            "frames": "119",
+            "ticks": "61",
+            "fps": "59.1157",
+            "simulation_hz": "30.303",
+            "location": "9",
+            "promo": "0"
+          },
+          {
+            "elapsed_ms": "2013",
+            "frames": "119",
+            "ticks": "60",
+            "fps": "59.1157",
+            "simulation_hz": "29.8063",
+            "location": "9",
+            "promo": "0"
+          },
+          {
+            "elapsed_ms": "2001",
+            "frames": "118",
+            "ticks": "60",
+            "fps": "58.9705",
+            "simulation_hz": "29.985",
+            "location": "9",
+            "promo": "0"
+          },
+          {
+            "elapsed_ms": "2007",
+            "frames": "118",
+            "ticks": "60",
+            "fps": "58.7942",
+            "simulation_hz": "29.8954",
+            "location": "9",
+            "promo": "0"
+          },
+          {
+            "elapsed_ms": "2002",
+            "frames": "118",
+            "ticks": "60",
+            "fps": "58.9411",
+            "simulation_hz": "29.97",
+            "location": "9",
+            "promo": "0"
+          },
+          {
+            "elapsed_ms": "2005",
+            "frames": "118",
+            "ticks": "61",
+            "fps": "58.8529",
+            "simulation_hz": "30.4239",
+            "location": "9",
+            "promo": "0"
+          },
+          {
+            "elapsed_ms": "2019",
+            "frames": "119",
+            "ticks": "60",
+            "fps": "58.9401",
+            "simulation_hz": "29.7177",
+            "location": "9",
+            "promo": "0"
+          },
+          {
+            "elapsed_ms": "2010",
+            "frames": "118",
+            "ticks": "60",
+            "fps": "58.7065",
+            "simulation_hz": "29.8507",
+            "location": "9",
+            "promo": "0"
+          }
+        ]
+      }
+    }
+  },
+  "clean_preparation": {
+    "engine_files_compared": 3072,
+    "game_files_compared": 18,
+    "recipe": {
+      "recipe_sha256": "d0c699789512d7188515adfa3bc03544d420d64b54393cdd01aa57eb8362cb85",
+      "engine_commit": "d8d5d1be34dfac328e15d9e9b831d9572cde9d0f",
+      "game_commit": "7fdfd95a71cc5b29974928b9a1151c1f3d6d0768",
+      "platform": "windows-x64"
+    },
+    "method": "Independent clean preparation and CMake configure; compare all engine tracked files (normalize CRLF) and all BASIC files (exact bytes)"
+  },
+  "runtime_regressions": {
+    "evidence": ".work/validation/tests-fps-final.log",
+    "software_renderer": true,
+    "tests": [
+      {
+        "name": "boolean-smoke",
+        "passed": true
+      },
+      {
+        "name": "rounding-smoke",
+        "passed": true
+      },
+      {
+        "name": "semantics",
+        "passed": true
+      },
+      {
+        "name": "runtime-smoke",
+        "passed": true
+      },
+      {
+        "name": "graphics-smoke",
+        "passed": true
+      },
+      {
+        "name": "material-smoke",
+        "passed": true
+      },
+      {
+        "name": "texture-alpha-smoke",
+        "passed": true
+      },
+      {
+        "name": "window-close-smoke",
+        "passed": true
+      },
+      {
+        "name": "capture-repeat-smoke",
+        "passed": true
+      },
+      {
+        "name": "timer-poll-smoke",
+        "passed": true
+      },
+      {
+        "name": "interpolation-smoke",
+        "passed": true
+      },
+      {
+        "name": "font-smoke",
+        "passed": true
+      },
+      {
+        "name": "hud-fit-smoke",
+        "passed": true
+      },
+      {
+        "name": "graphics-postflip-smoke",
+        "passed": true
+      }
+    ]
+  },
+  "game_checks": [
+    "Load existing slot 2",
+    "Arrow-key movement and rotation",
+    "Pause and resume",
+    "F11 counter toggle",
+    "F12 BMP capture",
+    "Close window with save and clean exit",
+    "Reload saved progress",
+    "Escape to slot menu with updated preview and name",
+    "Close from menu with clean exit"
+  ],
+  "artifacts": {
+    "directory": "dist/Hard-Time-Windows-x64",
+    "launcher": "Play Hard Time.cmd",
+    "executable_sha256": "ec9b90efc35993f9e05e253d7895aac6f26faf095d77de60db8bf9cc19afc8c1",
+    "executable_bytes": 4001792,
+    "zip": "dist/Hard-Time-Windows-x64.zip",
+    "zip_sha256": "b1b44fb08d1428cc7921596e30b57aa009963c7eccf46346a983e25f9b778821",
+    "zip_bytes": 46591761,
+    "zip_crc_check": true,
+    "existing_data_files_preserved": 6
+  },
+  "limitations": [
+    "No full playthrough",
+    "No physical GPU or 120/144 Hz display validation",
+    "Menus and scripted dialogue remain on legacy timing",
+    "Interpolation adds about one simulation tick of visual delay"
+  ]
+}

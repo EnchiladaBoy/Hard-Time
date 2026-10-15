@@ -1,0 +1,138 @@
+--- a/Gameplay.bb
++++ b/Gameplay.bb
+@@ -29,6 +29,11 @@
+ 
+ ;INITIATE ENGINE 
+ Global nativeQuit=0
++Global nativeHighFps=(GetEnv$("HARDTIME_ORIGINAL_FPS")<>"1")
++Global nativeTween#=1.0,nativeSmooth=0
++Global nativeShowFps=(GetEnv$("HARDTIME_SHOW_FPS")="1")
++Global nativeFpsLog=0,nativeFpsStart=0,nativeFpsFrames=0,nativeFpsTicks=0
++Global nativeFps#=0,nativeTickRate#=0,nativeHudSeed=1
+ AppCloseEvents True
+ LoadOptions()
+ ChangeResolution(optRes,0)
+@@ -58,14 +63,39 @@
+ End 
+ 
+ ;Let every screen unwind through its normal save and cleanup path.
+-Function NativeWaitTimer(timer)
+- Local ticks=WaitTimer(timer)
++Function NativeWaitTimer(timer,smooth=0)
++ Local ticks
++ If smooth<>nativeSmooth Then CaptureWorld
++ nativeSmooth=smooth
++ If smooth
++  ticks=PollTimer(timer)
++  nativeTween#=TimerTween#(timer)
++ Else
++  ticks=WaitTimer(timer)
++  nativeTween#=1.0
++ EndIf
+  If AppCloseRequested() Or (KeyDown(56) And KeyDown(45))
+   nativeQuit=1
+   go=-1
+   Return 0
+  EndIf
+  Return ticks
++End Function
++
++;Display cadence is independent of the original 30 Hz gameplay clock.
++Function NativeFrameStats(ticks)
++ nativeFpsFrames=nativeFpsFrames+1
++ nativeFpsTicks=nativeFpsTicks+ticks
++ Local elapsed=MilliSecs()-nativeFpsStart
++ If elapsed>=2000
++  nativeFps#=1000.0*nativeFpsFrames/elapsed
++  nativeTickRate#=1000.0*nativeFpsTicks/elapsed
++  If nativeFpsLog
++   WriteLine nativeFpsLog,elapsed+","+nativeFpsFrames+","+nativeFpsTicks+","+nativeFps#+","+nativeTickRate#+","+gamLocation(slot)+","+gamPromo
++  EndIf
++  nativeFpsStart=MilliSecs()
++  nativeFpsFrames=0 : nativeFpsTicks=0
++ EndIf
+ End Function
+ 
+ ;SCREEN ACCESS
+@@ -158,14 +188,22 @@
+ SeedRnd(MilliSecs())
+ Loader("Please Wait","Finalizing World")
+ timer=CreateTimer(30)
++nativeFpsStart=MilliSecs() : nativeFpsFrames=0 : nativeFpsTicks=0
++nativeFps#=0 : nativeTickRate#=0
++If GetEnv$("HARDTIME_FPS_LOG")="1"
++ nativeFpsLog=WriteFile("frame-times.csv")
++ If nativeFpsLog Then WriteLine nativeFpsLog,"elapsed_ms,frames,ticks,fps,simulation_hz,location,promo"
++EndIf
+ ;MAIN LOOP
+ zoom#=1.0
+ go=0 : gotim=-50 : keytim=20
+ While go=0
+ 
+  Cls
+- frames=NativeWaitTimer(timer)
++ ;Dialogue drawing also changes game state; retain its legacy cadence.
++ frames=NativeWaitTimer(timer,nativeHighFps And gamPromo=0 And gotim>0 And gamPause=0)
+  For framer=1 To frames
++  If nativeHighFps Then CaptureWorld
+ 	
+   ;COUNTERS
+   keytim=keytim-1
+@@ -495,7 +533,7 @@
+  Next
+ 
+  Next 
+- RenderWorld 1
++ RenderWorld nativeTween#
+  
+  ;DISPLAY
+  ;DrawImage gLogo(3),rX#(180),rY#(560)
+@@ -504,7 +542,11 @@
+  If gamPromo>0 Then show=0
+  If pAnim(gamPlayer(slot))=>76 And pAnim(gamPlayer(slot))=<77 And pAnimTim(gamPlayer(slot))>150 Then show=0
+  If show=1
++  ;Extra HUD draws must not consume gameplay randomness or flicker faster.
++  Local hudResumeSeed=RndSeed()
++  If frames>0 Then nativeHudSeed=hudResumeSeed Else SeedRnd(nativeHudSeed)
+   DisplayStatus(gamChar(slot),72,42)
++  If frames=0 Then SeedRnd(hudResumeSeed)
+   DisplayTime(727,30)
+   If OnComputer(gamPlayer(slot)) And pAnim(gamPlayer(slot))=102 And pState(gamPlayer(slot))=109 And pAnimTim(gamPlayer(slot))>10
+    DisplayFile(gamFile,100,530)
+@@ -529,9 +571,11 @@
+   ;Outline("Vices: "+vices+"/"+no_weaps,100,265,0,0,0,255,255,255) 
+  ;EndIf
+  ;display promo
+- For cyc=1 To no_plays
+-  ResetExpressions(cyc)
+- Next 
++ If frames>0
++  For cyc=1 To no_plays
++   ResetExpressions(cyc)
++  Next
++ EndIf
+  If gamPromo>0
+   DisplayPromo()
+  EndIf
+@@ -544,7 +588,13 @@
+  ;mask shaky start
+  If gotim=<0 Then Loader("Please Wait","Finalizing World")
+ 
++ If KeyHit(87) Then nativeShowFps=1-nativeShowFps
++ If nativeShowFps
++  SetFont font(1)
++  Outline("FPS: "+Int(nativeFps#)+"  Simulation: "+Int(nativeTickRate#)+" Hz",rX#(400),rY#(575),0,0,0,255,255,255)
++ EndIf
+  Flip
++ NativeFrameStats(frames)
+  ;screenshot (F12)
+  If KeyHit(88) Then Screenshot()
+  ;save preview shot
+@@ -554,6 +604,7 @@
+  EndIf
+ 
+ Wend
++If nativeFpsLog Then CloseFile nativeFpsLog : nativeFpsLog=0
+ ;restore sound
+ If charHealth(gamChar(slot))>0 Then Loader("Please Wait","Restoring Sound")
+ If ChannelPlaying(chAtmos)>0 Then StopChannel chAtmos

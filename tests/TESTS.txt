@@ -88,6 +88,14 @@ Windows --graphics additionally checks
     expected result before a successful exit.
   capture-repeat-smoke: four different frames at each of 640x480 and 800x600
     retain their pixels after Flip, GrabImage, SaveImage, FreeImage and reload.
+  timer-poll-smoke: render a small scene more often than the 30 Hz simulation;
+    check fractional interpolation bounds, elapsed-tick accounting, zero-tick
+    polls, stall recovery, and switching from PollTimer back to WaitTimer.
+    This uses Flip 0 to isolate scheduling from display vsync. It is not a
+    game-performance benchmark, and an overloaded machine can fail it.
+  interpolation-smoke: check actual pixels at two endpoints and the midpoint
+    of a parented cube's movement; verify render interpolation leaves world
+    transforms unchanged.
 
 The six Windows installer unit checks cover preservation of saves/photos and
 original data, overlapping paths, unrelated destinations, binary architecture,

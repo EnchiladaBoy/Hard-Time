@@ -42,6 +42,42 @@ Save and shutdown
   released after saving. The launcher backs up Data and excludes concurrent
   launches/updates. The on-disk int32/float32/string format is unchanged.
 
+Display refresh
+  PollTimer consumes elapsed ticks without blocking and pumps input even on
+  frames with zero ticks. TimerTween returns the fraction sampled by the last
+  poll/wait. Both operations share WaitTimer's monotonic cumulative clock.
+  Gameplay captures the world before each fixed 30 Hz update and interpolates
+  camera, entity and skeletal transforms when drawing intermediate frames.
+  Interpolation displays the previous/current tick pair, adding up to one
+  simulation tick of visual delay. Simulation transforms remain unchanged.
+
+  Extra HUD draws restore the RNG state and reuse the last HUD seed; expression
+  resets still run only on simulation frames. Dialogue rendering also mutates
+  gameplay state, so scripted conversations, menus, loading and pause retain
+  their original cadence. Separating those side effects is future work.
+
+  Swap interval selection is cached per graphics context and changes only
+  when Flip's wait argument changes. Unsupported adaptive vsync falls back to
+  ordinary vsync. If neither works, a monotonic limiter follows the current
+  display, with a 60 Hz fallback for unspecified rates (0 or 1 on Windows).
+  Deadlines retain their phase so sleep overshoot does not accumulate.
+  Flip 0 remains immediate. Hardware vsync pacing is not replaced by a sleep.
+
+Rewrite feasibility
+  All 18 archived BASIC files and the C++ engine are available. The current
+  compiler already emits native x64 machine code through LLVM. A language
+  change alone does not remove the fixed update loop or improve GPU access.
+  An incremental C++ port can retain the engine, assets and serialization
+  while replacing game systems with typed data and explicit update/render
+  boundaries. C# is also possible, with additional engine integration or an
+  engine migration. Either requires behavior and save compatibility checks,
+  especially for legacy numeric conversions, AI, animation and dialogue.
+
+  A complete Ghidra decompilation is not a prerequisite. Source-assisted
+  comparisons already matched all 233 named functions. Targeted disassembly
+  remains useful for discrepancies between the archived source and original
+  executable; symbol correspondence alone does not prove identical behavior.
+
 Limitations
   Focused testing is recorded in provenance/windows-validation.json.
   This does not establish a complete playthrough or compatibility with every

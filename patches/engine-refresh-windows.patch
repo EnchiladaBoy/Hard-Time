@@ -1,0 +1,149 @@
+--- a/src/modules/bb/graphics.sdl/graphics.sdl.cpp
++++ b/src/modules/bb/graphics.sdl/graphics.sdl.cpp
+@@ -1,5 +1,6 @@
+ #include "../../../stdutil/stdutil.h"
+ #include "graphics.sdl.h"
++#include <thread>
+ 
+ void SDLGraphics::onAppChange( void *data,void *context ){
+ 	SDLGraphics *graphics=(SDLGraphics*)context;
+@@ -215,10 +216,37 @@
+ }
+ 
+ void SDLContextDriver::flip( bool vwait ){
+-	if( SDL_GL_SetSwapInterval( vwait ? -1 : 0 )==-1 ){
+-		SDL_GL_SetSwapInterval( 1 );
+-	}
+- ((SDLGraphics*)graphics)->swap();
++ ((SDLGraphics*)graphics)->present(vwait);
++}
++
++void SDLGraphics::present(bool vwait){
++ const int requested=vwait ? -1 : 0;
++ if(requestedSwapInterval!=requested){
++  requestedSwapInterval=requested;
++  int result=SDL_GL_SetSwapInterval(requested);
++  if(result==-1 && vwait) result=SDL_GL_SetSwapInterval(1);
++  swapWaitAvailable=result==0 && SDL_GL_GetSwapInterval()!=0;
++  lastPresent={};
++ }
++ // Software/virtual drivers can reject both forms of vsync. Pace those
++ // explicitly, using the window's current display (60 Hz if unavailable).
++ // Flip 0 stays immediate. Hardware vsync remains responsible for pacing.
++ if(vwait && !swapWaitAvailable){
++  SDL_DisplayMode mode{};
++  const int display=SDL_GetWindowDisplayIndex(wnd);
++  const int hz=display>=0 && SDL_GetCurrentDisplayMode(display,&mode)==0 && mode.refresh_rate>1
++      ? mode.refresh_rate : 60;
++  const auto period=std::chrono::nanoseconds(1000000000LL/hz);
++  const auto now=std::chrono::steady_clock::now();
++  auto deadline=lastPresent+period;
++  if(lastPresent==std::chrono::steady_clock::time_point{} || now-deadline>period) deadline=now;
++  std::this_thread::sleep_until(deadline);
++  // Retain the schedule so sleep overshoot does not accumulate every frame.
++  lastPresent=deadline;
++ }else{
++  lastPresent={};
++ }
++ swap();
+ }
+ 
+ void SDLGraphics::swap(){
+--- a/src/modules/bb/graphics.sdl/graphics.sdl.h
++++ b/src/modules/bb/graphics.sdl/graphics.sdl.h
+@@ -4,6 +4,7 @@
+ #include <bb/graphics.gl/graphics.gl.h>
+ #include <bb/blitz3d.gl/blitz3d.gl.h>
+ #include <SDL.h>
++#include <chrono>
+ 
+ class SDLContextDriver:public GLB3DGraphics,public BBContextDriver{
+ public:
+@@ -23,6 +24,9 @@
+ };
+ 
+ class SDLGraphics : public GLGraphics{
++ int requestedSwapInterval=-2;
++ bool swapWaitAvailable=false;
++ std::chrono::steady_clock::time_point lastPresent;
+ #ifdef BB_WINDOWS
+  GLuint swapFramebuffer=0,swapColor=0;
+  int swapWidth=0,swapHeight=0;
+@@ -42,6 +46,7 @@
+ 
+ 	void resize();
+ 	void swap();
++	void present(bool vwait);
+ 
+ 	// graphics
+ 	void backup();
+--- a/src/modules/bb/timer/commands.decls
++++ b/src/modules/bb/timer/commands.decls
+@@ -1,3 +1,5 @@
+ CreateTimer.BBTimer( hertz% ):"bbCreateTimer"
+ WaitTimer%( timer.BBTimer ):"bbWaitTimer"
++PollTimer%( timer.BBTimer ):"bbPollTimer"
++TimerTween#( timer.BBTimer ):"bbTimerTween"
+ FreeTimer( timer.BBTimer ):"bbFreeTimer"
+--- a/src/modules/bb/timer/timer.cpp
++++ b/src/modules/bb/timer/timer.cpp
+@@ -19,6 +19,16 @@
+ 	return n;
+ }
+ 
++bb_int_t BBCALL bbPollTimer( BBTimer *t ){
++	// Pump input even when no simulation tick is due.
++	if( !bbRuntimeIdle() ) RTEX( 0 );
++	return t->poll();
++}
++
++bb_float_t BBCALL bbTimerTween( BBTimer *t ){
++	return t->tween();
++}
++
+ void BBCALL bbFreeTimer( BBTimer *t ){
+ 	if( !timers.count( t ) ) return;
+ 	timers.erase( t );
+--- a/src/modules/bb/timer/timer.h
++++ b/src/modules/bb/timer/timer.h
+@@ -10,6 +10,8 @@
+ 	/***** GX INTERFACE *****/
+ public:
+ 	virtual int wait()=0;
++	virtual int poll()=0;
++	virtual float tween()const=0;
+ };
+ 
+ BBTimer * BBCALL _osCreateTimer( int hertz );
+--- a/src/modules/bb/timer/timer.noop.cpp
++++ b/src/modules/bb/timer/timer.noop.cpp
+@@ -9,19 +9,28 @@
+     Clock::time_point start;
+     long long ticks = 0;
+     int hertz;
++    float fraction = 0;
+ public:
+     explicit PosixTimer(int h): start(Clock::now()), hertz(h > 0 ? h : 1) {}
+     int wait() override {
+         const auto deadline = start + std::chrono::nanoseconds(
+             ((ticks + 1) * 1000000000LL + hertz - 1) / hertz);
+         std::this_thread::sleep_until(deadline);
++        return poll();
++    }
++    int poll() override {
+         const auto nanos = std::chrono::duration_cast<std::chrono::nanoseconds>(Clock::now() - start).count();
+-        const long long elapsed = nanos * hertz / 1000000000LL;
++        // Split whole seconds to avoid multiplication overflow on long runs.
++        const long long scaled = (nanos % 1000000000LL) * hertz;
++        const long long elapsed = (nanos / 1000000000LL) * hertz + scaled / 1000000000LL;
++        fraction = static_cast<float>((scaled % 1000000000LL) / 1000000000.0);
++        if (fraction >= 1) fraction = 0.99999994f;
+         const long long pending = elapsed - ticks;
+         const int result = static_cast<int>(pending > std::numeric_limits<int>::max() ? std::numeric_limits<int>::max() : pending);
+         ticks += result;
+         return result;
+     }
++    float tween() const override { return fraction; }
+ };
+ 
+ BBTimer * BBCALL _osCreateTimer(int hertz) { return new PosixTimer(hertz); }

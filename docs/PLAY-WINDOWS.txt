@@ -6,13 +6,19 @@ records diagnostics in logs. It prevents two copies from using these saves
 at once. Closing the game window saves active gameplay before exiting.
 
 Use the arrow keys and Enter in menus. During play, Esc saves and returns to
-the slot menu. P pauses and F12 saves a screenshot to Photo Album. Read the
+the slot menu. P pauses, F11 toggles the FPS counter, and F12 saves a screenshot
+to Photo Album. Read the
 original Instruction Manual.txt and Survival Guide.txt for game controls.
 
 Progress, options and character photographs are in Data. Screenshots are in
 Photo Album. To restore a backup, close the game, preserve the current Data
 folder elsewhere, then copy the selected backups/<date> folder as Data.
 Backups are retained until you remove them.
+
+Normal gameplay renders interpolated frames at the display's refresh rate
+when performance permits. Game speed stays at its original 30 updates per
+second. Menus, loading, pause and scripted dialogue retain their original
+timing. The FPS counter reports rendered frames and simulation updates.
 
 If software-renderer.txt is present, this installation uses Mesa llvmpipe on
 the CPU. This is useful when a modern OpenGL hardware driver is unavailable.

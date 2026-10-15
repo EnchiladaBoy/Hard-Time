@@ -130,5 +130,6 @@
     "game-windows.patch": "4bcadb256cecb6faae1460bd84a29faf9df09426b2f33ea08e578b87c1b689d9"
   },
   "toolchain_lock_sha256": "7ecf01aa0e78acf3e21910efdc479507d8f57b16e449d9a9749b196ac8fea799",
-  "assets": "Supplied locally; game assets and original executables excluded from Git."
+  "assets": "Supplied locally; game assets and original executables excluded from Git.",
+  "artifact_note": "Historical initial-port hashes; current Windows build and refresh-rate measurements are in windows-refresh-validation.json."
 }

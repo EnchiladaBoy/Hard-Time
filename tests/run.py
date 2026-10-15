@@ -25,7 +25,8 @@ WINDOWS_FONTS = {"Comfortaa": "Comic Sans MS", "Liberation Sans:style=Bold": "Ar
 CORE = ["boolean-smoke", "rounding-smoke", "semantics"]
 GRAPHICS = ["runtime-smoke", "graphics-smoke", "material-smoke"]
 FONTS = ["font-smoke", "hud-fit-smoke"]
-WINDOWS_GRAPHICS = ["texture-alpha-smoke", "window-close-smoke", "capture-repeat-smoke"]
+WINDOWS_GRAPHICS = ["texture-alpha-smoke", "window-close-smoke", "capture-repeat-smoke",
+                    "timer-poll-smoke", "interpolation-smoke"]
 RESULT_FILES = {
     "semantics": "semantics-results.txt",
     "graphics-postflip-smoke": "graphics-smoke-result.txt",
@@ -73,6 +74,16 @@ def validate_result(name: str, work: Path) -> None:
         require(250 <= int(values["Elapsed"]) <= 1000, "Timer cadence outside test bounds")
         wanted = struct.pack("<4i2fI", -(2**31), -1, 0, 2**31 - 1, 1.25, -2.5, 9) + b"Hard Time"
         require((work / "runtime-smoke.bin").read_bytes() == wanted, "int32/float32/string byte format changed")
+    elif name == "timer-poll-smoke":
+        values = dict(line.split("=", 1) for line in lines)
+        elapsed = int(values["Elapsed"])
+        ticks = int(values["Ticks"])
+        require(1000 <= elapsed <= 2000, "Poll test stalled")
+        require(abs(ticks - elapsed * 0.03) <= 2, "Polling changed the 30 Hz simulation rate")
+        require(int(values["Renders"]) > ticks * 1.5, "Rendering did not exceed the simulation rate")
+        require(int(values["EmptyPolls"]) > 0, "PollTimer never returned without a tick")
+        require(int(values["Catchup"]) >= 3 and int(values["Waited"]) >= 1,
+                "Poll/Wait interoperability lost ticks")
     elif name == "font-smoke":
         require(len(lines) == 11 and lines[-1] == "PASS", "Font lifecycle test incomplete")
         for iteration, line in enumerate(lines[:-1], 1):

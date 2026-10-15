@@ -66,6 +66,22 @@ Play and saves
   F12 creates a BMP in Photo Album. The original manual is copied when present.
   Read Me.txt in the installation explains restoring a backup.
 
+Display refresh and diagnostics
+  Normal gameplay uses interpolated rendering with a fixed 30 Hz simulation.
+  Presentation follows driver vsync. If the driver rejects vsync, a monotonic
+  limiter uses the window's display refresh rate, falling back to 60 Hz when
+  the display does not report a rate. This removes the gameplay render cap;
+  actual FPS still depends on the scene and graphics driver. Menus, loading,
+  pause and scripted dialogue retain their original timing.
+  F11 toggles the rendered-FPS/simulation-Hz counter during gameplay.
+  Optional environment variables, set before launching:
+    HARDTIME_SHOW_FPS=1       show the counter immediately
+    HARDTIME_ORIGINAL_FPS=1   use the original blocking 30 Hz rendering
+    HARDTIME_FPS_LOG=1        write frame-times.csv in the installation
+  The CSV contains two-second aggregates, including loading and pause. It is
+  overwritten when entering gameplay; copy it elsewhere before another run.
+  Diagnostic settings do not change the save-file format.
+
 Regression checks (after building):
   python tests/run.py --all --post-flip --software-renderer
   python -m unittest discover -s tests -p test_windows_install.py -v

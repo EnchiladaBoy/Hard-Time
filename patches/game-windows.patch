@@ -1,0 +1,244 @@
+--- a/Credits.bb
++++ b/Credits.bb
+@@ -7,13 +7,13 @@
+ ;//////////////////////////////////////////////////////////////////////////////
+ Function Intro()
+ ;initial media
+-font(0)=LoadFont("Comfortaa",13,0,0,0)
+-font(1)=LoadFont("Comfortaa",16,0,0,0)
+-font(2)=LoadFont("Comfortaa",20,0,0,0)
+-font(3)=LoadFont("Comfortaa",24,0,0,0)
+-font(4)=LoadFont("Comfortaa",36,0,0,0)
+-font(5)=LoadFont("Comfortaa",42,0,0,0)
+-font(6)=LoadFont("Comfortaa",48,0,0,0)
++font(0)=LoadFont("Comic Sans MS",13,0,0,0)
++font(1)=LoadFont("Comic Sans MS",16,0,0,0)
++font(2)=LoadFont("Comic Sans MS",20,0,0,0)
++font(3)=LoadFont("Comic Sans MS",24,0,0,0)
++font(4)=LoadFont("Comic Sans MS",36,0,0,0)
++font(5)=LoadFont("Comic Sans MS",42,0,0,0)
++font(6)=LoadFont("Comic Sans MS",48,0,0,0)
+ gTile=LoadImage("Graphics/Tile.png")
+ MaskImage gTile,255,0,255
+ For count=1 To 3
+@@ -34,7 +34,7 @@
+ While go=0
+ 
+  Cls
+- frames=WaitTimer(timer)
++ frames=NativeWaitTimer(timer)
+  For framer=1 To frames
+ 	
+ 	;PROCESS     
+@@ -94,7 +94,7 @@
+ While go=0
+ 
+  Cls
+- frames=WaitTimer(timer)
++ frames=NativeWaitTimer(timer)
+  For framer=1 To frames
+ 	
+ 	;timers
+@@ -179,7 +179,7 @@
+ While go=0
+ 
+  Cls
+- frames=WaitTimer(timer)
++ frames=NativeWaitTimer(timer)
+  For framer=1 To frames
+ 	
+ 	;PROCESS     
+@@ -343,7 +343,7 @@
+ While go=0
+ 
+  Cls
+- frames=WaitTimer(timer)
++ frames=NativeWaitTimer(timer)
+  For framer=1 To frames
+ 	
+ 	;counters
+--- a/Crimes.bb
++++ b/Crimes.bb
+@@ -117,7 +117,7 @@
+ While go=0
+ 
+  Cls
+- frames=WaitTimer(timer)
++ frames=NativeWaitTimer(timer)
+  For framer=1 To frames
+ 	
+ 	;counters
+--- a/Editor.bb
++++ b/Editor.bb
+@@ -55,7 +55,7 @@
+ 	
+  Cls
+  screenCall=0
+- frames=WaitTimer(timer)
++ frames=NativeWaitTimer(timer)
+  For framer=1 To frames
+ 	
+ 	;counters
+--- a/Gameplay.bb
++++ b/Gameplay.bb
+@@ -28,16 +28,19 @@
+ Include "Credits.bb"
+ 
+ ;INITIATE ENGINE 
++Global nativeQuit=0
++AppCloseEvents True
+ LoadOptions()
+ ChangeResolution(optRes,0)
+ SetBuffer BackBuffer()
+ AutoMidHandle True
+-; Linux SDL input backend replaces EnableDirectInput True
++; SDL input backend replaces legacy DirectInput
+ SeedRnd(MilliSecs())   
+ 
+ ;LOADING PROCESS
+ ;intro
+ Intro()
++If nativeQuit Then SaveOptions() : End
+ ;load media
+ LoadImages()
+ LoadTextures()
+@@ -50,9 +53,20 @@
+  ;load screen
+  LoadScreen(screen)
+  ;get-out clause
+- If KeyDown(56) And KeyDown(45) Then End
++ If nativeQuit Then SaveOptions() : End
+ Until screen=0
+ End 
++
++;Let every screen unwind through its normal save and cleanup path.
++Function NativeWaitTimer(timer)
++ Local ticks=WaitTimer(timer)
++ If AppCloseRequested() Or (KeyDown(56) And KeyDown(45))
++  nativeQuit=1
++  go=-1
++  Return 0
++ EndIf
++ Return ticks
++End Function
+ 
+ ;SCREEN ACCESS
+ Function LoadScreen(request)
+@@ -150,7 +164,7 @@
+ While go=0
+ 
+  Cls
+- frames=WaitTimer(timer)
++ frames=NativeWaitTimer(timer)
+  For framer=1 To frames
+ 	
+   ;COUNTERS
+@@ -712,6 +726,8 @@
+ If go=2 Then screen=52
+ If go=3 Then gamEnded=1 : screen=53
+ If charHealth(gamChar(slot))=0 Then gamEnded=1 : gamName$(slot)="" : screen=6
++;Persist the slot label alongside its progress, including on window close.
++SaveOptions()
+ End Function
+ 
+ ;-----------------------------------------------------------------
+--- a/Menus.bb
++++ b/Menus.bb
+@@ -14,7 +14,7 @@
+ While go=0
+ 
+  Cls
+- frames=WaitTimer(timer)
++ frames=NativeWaitTimer(timer)
+  For framer=1 To frames
+ 	
+ 	;timers
+@@ -82,7 +82,7 @@
+ While go=0
+ 
+  Cls
+- frames=WaitTimer(timer)
++ frames=NativeWaitTimer(timer)
+  For framer=1 To frames
+ 	
+ 	;timers
+@@ -191,7 +191,7 @@
+ 
+  If screenCall=0 Then Cls
+ 
+- frames=WaitTimer(timer)
++ frames=NativeWaitTimer(timer)
+  For framer=1 To frames
+ 	
+ 	;timers
+@@ -289,7 +289,7 @@
+ 
+  If screenCall=0 Then Cls
+ 
+- frames=WaitTimer(timer)
++ frames=NativeWaitTimer(timer)
+  For framer=1 To frames
+ 	
+ 	;timers
+@@ -386,7 +386,7 @@
+ While go=0
+ 
+  Cls
+- frames=WaitTimer(timer)
++ frames=NativeWaitTimer(timer)
+  For framer=1 To frames
+ 	
+ 	;timers
+@@ -496,7 +496,7 @@
+ While go=0
+ 
+  Cls
+- frames=WaitTimer(timer)
++ frames=NativeWaitTimer(timer)
+  For framer=1 To frames
+ 	
+ 	;timers
+@@ -728,4 +728,5 @@
+  temp=MilliSecs()/10
+  namer$="Screenshot - "+temp+".bmp"
+  SaveImage(screenshot,"Photo Album/"+namer$)
++ FreeImage screenshot
+ End Function
+\ No newline at end of file
+--- a/Values.bb
++++ b/Values.bb
+@@ -421,21 +421,21 @@
+ ;LOADING PROCESS
+ Function LoadImages()
+  ;main fonts
+- font(0)=LoadFont("Comfortaa",13,0,0,0)
+- font(1)=LoadFont("Comfortaa",16,0,0,0)
+- font(2)=LoadFont("Comfortaa",20,0,0,0)
+- font(3)=LoadFont("Comfortaa",24,0,0,0)
+- font(4)=LoadFont("Comfortaa",36,0,0,0)
+- font(5)=LoadFont("Comfortaa",42,0,0,0)
+- font(6)=LoadFont("Comfortaa",48,0,0,0)
++ font(0)=LoadFont("Comic Sans MS",13,0,0,0)
++ font(1)=LoadFont("Comic Sans MS",16,0,0,0)
++ font(2)=LoadFont("Comic Sans MS",20,0,0,0)
++ font(3)=LoadFont("Comic Sans MS",24,0,0,0)
++ font(4)=LoadFont("Comic Sans MS",36,0,0,0)
++ font(5)=LoadFont("Comic Sans MS",42,0,0,0)
++ font(6)=LoadFont("Comic Sans MS",48,0,0,0)
+  ;HUD fonts fit the original fixed-pixel stat columns at each resolution.
+- fontHud=LoadFont("Liberation Sans",12,0,0,0)
+- fontHudNumber=LoadFont("Liberation Sans:style=Bold",15,1,0,0)
++ fontHud=LoadFont("Arial",12,0,0,0)
++ fontHudNumber=LoadFont("Arial",15,1,0,0)
+  ;novelty fonts
+- fontNumber=LoadFont("Liberation Sans:style=Bold",15,1,0,0)
+- fontComputer=LoadFont("Liberation Mono",16,0,0,0)
+- fontMoney=LoadFont("Liberation Serif:style=Bold",32,1,0,0)
+- fontClock=LoadFont("Liberation Mono:style=Bold",26,1,0,0)
++ fontNumber=LoadFont("Arial",15,1,0,0)
++ fontComputer=LoadFont("Consolas",16,0,0,0)
++ fontMoney=LoadFont("Times New Roman",32,1,0,0)
++ fontClock=LoadFont("Consolas",26,1,0,0)
+  ;tile
+  gTile=LoadImage("Graphics/Tile.png")
+  MaskImage gTile,255,0,255

@@ -1,0 +1,12 @@
+The optional local software renderer uses Mesa 26.2.4, distributed by
+mesa-dist-win, and its LLVM-based llvmpipe driver. It is loaded only by this
+installation and does not install a system graphics driver.
+
+Distribution and source information:
+https://github.com/pal1000/mesa-dist-win/releases/tag/26.2.4
+https://gitlab.freedesktop.org/mesa/mesa
+https://docs.mesa3d.org/license.html
+https://llvm.org/docs/License.html
+
+The DLLs are downloaded separately from the pinned release, verified against
+scripts/windows-toolchain.json, and kept outside the source repository.

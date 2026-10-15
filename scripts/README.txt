@@ -1,5 +1,7 @@
 NATIVE ARM64 BUILD WORKFLOW
 
+For the Windows x64 workflow, see scripts/README-windows.txt.
+
 Run these commands from the repository root:
 
   python3 scripts/prepare.py

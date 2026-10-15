@@ -1,0 +1,134 @@
+{
+  "date_utc": "2026-10-15T04:46:42.048156+00:00",
+  "scope": "Native Windows x64 source-assisted rebuild and focused validation; not a complete playthrough.",
+  "host": {
+    "os": "Windows 11 Pro 10.0.26200 AMD64",
+    "display_adapter": "Microsoft Basic Display Adapter",
+    "renderer": "Mesa 26.2.4 llvmpipe (app-local)",
+    "toolset": "MSVC 14.44.35207, Windows SDK 10.0.26100.0, LLVM/LLD 19.1.5"
+  },
+  "source_correspondence": {
+    "matched_named_functions": 233,
+    "portable_original_data_files": 6,
+    "original_executable_unchanged": true,
+    "installer_sha256": "72d4f6a2e9c22a77f63b2f90730cb71bb742ecf9c1782000f9a5e4cb641c6ca1",
+    "original_windowed_exe_sha256": "0f5009d31e4459ecb28e55dfce95bd15e488a009c24326e0719e3181058865dd",
+    "interpretation": "Matching named functions establish close correspondence, not a byte-identical rebuild."
+  },
+  "clean_preparation": {
+    "engine_files_checked": 3073,
+    "game_files_checked": 18,
+    "matched": true,
+    "recipe": {
+      "recipe_sha256": "5b3cee4bf9f1c53d4bb47c0cc2e1cfda1fe4558803521e5e6fc0d3492f02ab1a",
+      "engine_commit": "d8d5d1be34dfac328e15d9e9b831d9572cde9d0f",
+      "game_commit": "7fdfd95a71cc5b29974928b9a1151c1f3d6d0768",
+      "platform": "windows-x64"
+    },
+    "method": "scripts/prepare.py into a separate clean directory; compare 3073 engine files and all 18 BASIC files to compiled sources, normalizing line endings."
+  },
+  "artifacts": {
+    "portable_directory": "dist/Hard-Time-Windows-x64",
+    "launcher": "Play Hard Time.cmd",
+    "executable": {
+      "file": "Hard Time.exe",
+      "sha256": "80d3622e08681dc16a6529fdf01a81214e9c39513d6ad9027aa09bebd0900d6b",
+      "bytes": 3994624,
+      "format": "PE32+ AMD64, Windows GUI subsystem"
+    },
+    "dlls": {
+      "libgallium_wgl.dll": "53e49adf87590d5b0cab8553b1e98084812040cc1fca8c487695b17b7af3702e",
+      "OpenAL32.dll": "3963b06e319180700be0bcc0d027336664bb3a4975876b4a5442f10746fab5b4",
+      "opengl32.dll": "75b295fc80df0eaa8f1264c28663f6932c8b72d36513eb092556608858b7f5e0"
+    },
+    "zip": {
+      "file": "dist/Hard-Time-Windows-x64.zip",
+      "sha256": "9b5dfac5071ef68811817e3b5da0f800d7d85432d01a74064a1d94fb20670acd",
+      "bytes": 45701543,
+      "crc_check_passed": true
+    }
+  },
+  "runtime_regressions": [
+    {
+      "name": "boolean-smoke",
+      "passed": true
+    },
+    {
+      "name": "rounding-smoke",
+      "passed": true
+    },
+    {
+      "name": "semantics",
+      "passed": true
+    },
+    {
+      "name": "runtime-smoke",
+      "passed": true
+    },
+    {
+      "name": "graphics-smoke",
+      "passed": true
+    },
+    {
+      "name": "material-smoke",
+      "passed": true
+    },
+    {
+      "name": "texture-alpha-smoke",
+      "passed": true
+    },
+    {
+      "name": "window-close-smoke",
+      "passed": true
+    },
+    {
+      "name": "capture-repeat-smoke",
+      "passed": true
+    },
+    {
+      "name": "font-smoke",
+      "passed": true
+    },
+    {
+      "name": "hud-fit-smoke",
+      "passed": true
+    },
+    {
+      "name": "graphics-postflip-smoke",
+      "passed": true
+    }
+  ],
+  "runtime_results_sha256": "6f0f30765fcfa9b3ccd0d0b138e79f7f5b1e28f6d6ead2dce2a583b2344a2ec9",
+  "installer_unit_tests": {
+    "passed": 6,
+    "failed": 0,
+    "command": "python -m unittest discover -s tests -p test_windows_install.py -v"
+  },
+  "full_game_checks": [
+    "Main menu, character creator, courtroom, prison introduction and location 9 gameplay rendered with supplied original assets.",
+    "Keyboard movement and turning exercised in a disposable installation.",
+    "F12 creates 800x600 BMPs; repeated menu captures retain the logo after the final rendering fix.",
+    "Character portrait and slot thumbnail are nonblack BMPs.",
+    "Esc saves progress and returns to the slot menu.",
+    "Window close during gameplay saved slot 2 and exited with status 0.",
+    "Restart displayed the saved slot name and thumbnail; selecting the slot restored gameplay.",
+    "Final portable launcher created a Data backup, excluded a second launch, and exited with status 0 after window close; stderr contained only OpenGL initialization metadata.",
+    "The six supplied Data files remain byte-identical in the final portable installation."
+  ],
+  "not_validated": [
+    "Full playthrough",
+    "Physical gamepads",
+    "Hardware GPU drivers",
+    "Audible speaker output",
+    "Windows 10",
+    "ARM64 Windows",
+    "All DPI and monitor configurations",
+    "Loading this port's saves in the original 32-bit executable; serialization bytes are covered by regressions"
+  ],
+  "patches_sha256": {
+    "engine-windows-x64.patch": "9fde13624793e9ea5a66c2b5b000380b5d52dcf293b8fba4499969116ef9f09a",
+    "game-windows.patch": "4bcadb256cecb6faae1460bd84a29faf9df09426b2f33ea08e578b87c1b689d9"
+  },
+  "toolchain_lock_sha256": "7ecf01aa0e78acf3e21910efdc479507d8f57b16e449d9a9749b196ac8fea799",
+  "assets": "Supplied locally; game assets and original executables excluded from Git."
+}

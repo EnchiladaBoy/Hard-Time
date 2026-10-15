@@ -1,2 +1,4 @@
+# Keep source hashes and patch context identical on Windows and Linux.
+* text=auto eol=lf
 # Patch context preserves the original BASIC and engine whitespace.
 *.patch -whitespace

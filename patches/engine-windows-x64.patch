@@ -1,0 +1,507 @@
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -340,6 +340,11 @@
+   add_compile_options(-fcolor-diagnostics)
+ ENDIF ()
+ 
++# The game build has no dependency on the legacy MFC editor.
++option(BB_HARDTIME_CLI "Build the native Hard Time command-line tools" ON)
++if(BB_WINDOWS)
++  add_compile_definitions(NOMINMAX)
++endif()
+ set(CMAKE_UNITY_BUILD true)
+ 
+ function(file_write_changes path src)
+--- a/deps/CMakeLists.txt
++++ b/deps/CMakeLists.txt
+@@ -52,5 +52,7 @@
+ # third-party wrappers
+ # Native Hard Time build: no ODE functions used
+ add_subdirectory(steamworks)
+-add_subdirectory(tiltfive)
++if(NOT BB_HARDTIME_CLI)
++  add_subdirectory(tiltfive)
++endif()
+ #add_subdirectory(luajit)
+--- a/deps/ogg/CMakeLists.txt
++++ b/deps/ogg/CMakeLists.txt
+@@ -1,4 +1,4 @@
+-IF(NOT BB_WINDOWS)
++IF(NOT BB_WINDOWS OR BB_HARDTIME_CLI)
+   add_subdirectory(tree)
+   target_output_to_toolchain(ogg)
+ ENDIF()
+--- a/src/modules/bb/audio.openal/CMakeLists.txt
++++ b/src/modules/bb/audio.openal/CMakeLists.txt
+@@ -4,12 +4,21 @@
+   set(DEPENDS_ON bb.audio)
+   set(LIBS SDL2)
+   set(SOURCES audio.openal.h audio.openal.cpp)
+-  if(APPLE)
++  if(BB_WINDOWS)
++    set(SYSTEM_LIBS OpenAL32)
++    get_filename_component(BB_OPENAL_LIBDIR "${OPENAL_LIBRARY}" DIRECTORY)
++    link_directories("${BB_OPENAL_LIBDIR}")
++    configure_file("${OPENAL_LIBRARY}" "${TOOLCHAIN_PATH}/lib/OpenAL32.lib" COPYONLY)
++  elseif(APPLE)
+     set(SYSTEM_LIBS "-framework OpenAL")
+   else()
+     set(SYSTEM_LIBS openal)
+   endif()
+   bb_end_module()
++  target_include_directories(bb.audio.openal PRIVATE "${OPENAL_INCLUDE_DIR}")
++  if(BB_WINDOWS)
++    target_link_directories(bb.audio.openal PUBLIC "${BB_OPENAL_LIBDIR}")
++  endif()
+ 
+   if(APPLE)
+     target_compile_options(bb.audio.openal PRIVATE -Wno-deprecated-declarations)
+--- a/src/modules/bb/graphics.gl/graphics.gl.cpp
++++ b/src/modules/bb/graphics.gl/graphics.gl.cpp
+@@ -168,6 +168,15 @@
+ 	BBPixmap *pixmap=bbLoadPixmap( file );
+ 	if( !pixmap ) return 0;
+ 
++	// Match the original texture flags: black masks and grayscale alpha.
++	// Keep alpha supplied by RGBA images, and leave ordinary 2D image loading alone.
++	if( flags & BBCanvas::CANVAS_TEX_ALPHA ){
++		if( flags & BBCanvas::CANVAS_TEX_MASK ) pixmap->mask(0,0,0);
++		else if( !pixmap->trans ) pixmap->buildAlpha(!(flags & BBCanvas::CANVAS_TEX_RGB));
++	}else if( flags & BBCanvas::CANVAS_TEXTURE ){
++		for(int i=0;i<pixmap->width*pixmap->height;++i) pixmap->bits[4*i+3]=255;
++	}
++
+ 	pixmap->flipVertically();
+ 	pixmap->swapBytes0and2();
+ 
+--- a/src/modules/bb/graphics.sdl/graphics.sdl.cpp
++++ b/src/modules/bb/graphics.sdl/graphics.sdl.cpp
+@@ -17,6 +17,10 @@
+ SDLGraphics::~SDLGraphics(){
+ 	bbAppOnChange.remove( onAppChange,this );
+ 
++#ifdef BB_WINDOWS
++ if(swapFramebuffer) glDeleteFramebuffers(1,&swapFramebuffer);
++ if(swapColor) glDeleteRenderbuffers(1,&swapColor);
++#endif
+ 	SDL_GL_DeleteContext( context );
+ 	SDL_DestroyWindow( wnd );wnd=0;
+ }
+@@ -214,7 +218,53 @@
+ 	if( SDL_GL_SetSwapInterval( vwait ? -1 : 0 )==-1 ){
+ 		SDL_GL_SetSwapInterval( 1 );
+ 	}
+-	SDL_GL_SwapWindow( ((SDLGraphics*)graphics)->wnd );
++ ((SDLGraphics*)graphics)->swap();
++}
++
++void SDLGraphics::swap(){
++#ifdef BB_WINDOWS
++ // Preserve the completed BACK buffer before WGL swaps it. The desktop
++ // compositor does not guarantee readable FRONT pixels (occluded windows
++ // can return black), and the next BACK buffer can be discarded.
++ GLint readFramebuffer=0,drawFramebuffer=0,readBuffer=0,drawBuffer=0,renderbuffer=0;
++ glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING,&readFramebuffer);
++ glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING,&drawFramebuffer);
++ glGetIntegerv(GL_READ_BUFFER,&readBuffer);
++ glGetIntegerv(GL_DRAW_BUFFER,&drawBuffer);
++ glGetIntegerv(GL_RENDERBUFFER_BINDING,&renderbuffer);
++ const GLboolean scissor=glIsEnabled(GL_SCISSOR_TEST);
++ int width=0,height=0;
++ SDL_GL_GetDrawableSize(wnd,&width,&height);
++ if(width>0 && height>0){
++  if(!swapFramebuffer) glGenFramebuffers(1,&swapFramebuffer);
++  if(!swapColor) glGenRenderbuffers(1,&swapColor);
++  glBindFramebuffer(GL_DRAW_FRAMEBUFFER,swapFramebuffer);
++  if(width!=swapWidth || height!=swapHeight){
++   glBindRenderbuffer(GL_RENDERBUFFER,swapColor);
++   glRenderbufferStorage(GL_RENDERBUFFER,GL_RGBA8,width,height);
++   glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER,GL_COLOR_ATTACHMENT0,GL_RENDERBUFFER,swapColor);
++   swapWidth=width;swapHeight=height;
++  }
++  glDrawBuffer(GL_COLOR_ATTACHMENT0);
++  if(glCheckFramebufferStatus(GL_DRAW_FRAMEBUFFER)!=GL_FRAMEBUFFER_COMPLETE)
++   RTEX("Unable to preserve the Windows backbuffer");
++  glBindFramebuffer(GL_READ_FRAMEBUFFER,0);glReadBuffer(GL_BACK);
++  glDisable(GL_SCISSOR_TEST);
++  glBlitFramebuffer(0,0,width,height,0,0,width,height,GL_COLOR_BUFFER_BIT,GL_NEAREST);
++  glBindFramebuffer(GL_DRAW_FRAMEBUFFER,0);glDrawBuffer(GL_BACK);
++  SDL_GL_SwapWindow(wnd);
++  glBindFramebuffer(GL_READ_FRAMEBUFFER,swapFramebuffer);glReadBuffer(GL_COLOR_ATTACHMENT0);
++  glBlitFramebuffer(0,0,width,height,0,0,width,height,GL_COLOR_BUFFER_BIT,GL_NEAREST);
++ }else{
++  SDL_GL_SwapWindow(wnd);
++ }
++ glBindRenderbuffer(GL_RENDERBUFFER,renderbuffer);
++ glBindFramebuffer(GL_READ_FRAMEBUFFER,readFramebuffer);glReadBuffer(readBuffer);
++ glBindFramebuffer(GL_DRAW_FRAMEBUFFER,drawFramebuffer);glDrawBuffer(drawBuffer);
++ if(scissor) glEnable(GL_SCISSOR_TEST);
++#else
++ SDL_GL_SwapWindow(wnd);
++#endif
+ }
+ 
+ static BBContextDriver *createSDLContext( const std::string &name ){
+--- a/src/modules/bb/graphics.sdl/graphics.sdl.h
++++ b/src/modules/bb/graphics.sdl/graphics.sdl.h
+@@ -23,6 +23,10 @@
+ };
+ 
+ class SDLGraphics : public GLGraphics{
++#ifdef BB_WINDOWS
++ GLuint swapFramebuffer=0,swapColor=0;
++ int swapWidth=0,swapHeight=0;
++#endif
+ protected:
+ 	int window_width,window_height,drawable_width,drawable_height;
+ 
+@@ -37,6 +41,7 @@
+ 	~SDLGraphics();
+ 
+ 	void resize();
++	void swap();
+ 
+ 	// graphics
+ 	void backup();
+--- a/src/modules/bb/graphics/font.cpp
++++ b/src/modules/bb/graphics/font.cpp
+@@ -13,14 +13,16 @@
+ };
+ 
+ #ifdef BB_WINDOWS
+-bool lookupFontData( const std::string &fontName,BBFontData &font ){
+-	bool bold=false,italic=false,underline=false,strikeout=false;
++bool lookupFontData( const std::string &fontName,BBFontData &font,int flags ){
++	bool bold=(flags & BBFont::FONT_BOLD)!=0;
++	bool italic=(flags & BBFont::FONT_ITALIC)!=0;
++	bool underline=(flags & BBFont::FONT_UNDERLINE)!=0,strikeout=false;
+ 
+ 	int height=10;
+ 
+ 	HFONT hfont=CreateFont(
+ 		height,0,0,0,
+-		bold,italic,underline,strikeout,
++		bold ? FW_BOLD : FW_NORMAL,italic,underline,strikeout,
+ 		ANSI_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,DEFAULT_QUALITY,
+ 		DEFAULT_PITCH|FF_DONTCARE,fontName.c_str() );
+ 
+@@ -133,10 +135,19 @@
+ 
+ BBImageFont *BBImageFont::load( const std::string &name,int height,float density,int flags ){
+ 	BBFontData font;
+-	if( bbFontCache.count( name )==0 ){
++#ifdef BB_WINDOWS
++	const std::string cacheKey=name+":"+std::to_string(flags);
++#else
++	const std::string &cacheKey=name;
++#endif
++	if( bbFontCache.count( cacheKey )==0 ){
+ 		int n=name.rfind( "." );
+ 		if( n==std::string::npos ){
++#ifdef BB_WINDOWS
++			if( !lookupFontData( name,font,flags ) ){
++#else
+ 			if( !lookupFontData( name,font ) ){
++#endif
+ 				return 0;
+ 			}
+ 		}else{
+@@ -156,10 +167,10 @@
+ 			}
+ 		}
+ 	}else{
+-		font=bbFontCache[name];
+-	}
+-
+-	bbFontCache.insert( make_pair( name,font ) );
++		font=bbFontCache[cacheKey];
++	}
++
++	bbFontCache.insert( make_pair( cacheKey,font ) );
+ 
+ 	FT_Face face;
+ 	if( FT_New_Memory_Face( ft,font.data,font.size,0,&face ) ){
+--- a/src/modules/bb/math/math.cpp
++++ b/src/modules/bb/math/math.cpp
+@@ -3,6 +3,20 @@
+ #include <algorithm>
+ 
+ #include "math.h"
++
++#ifdef BB_WINDOWS
++// LLVM lowers roundeven to a libc call on baseline x64 (without SSE4.1).
++// The Windows CRT does not provide that C23 function. Keep ties-to-even
++// independent of the thread's floating-point rounding mode.
++extern "C" double roundeven(double value) {
++    if (!std::isfinite(value) || std::fabs(value) >= 4503599627370496.0) return value;
++    double result = std::floor(value);
++    const double fraction = value - result;
++    if (fraction > 0.5 || (fraction == 0.5 && std::fmod(result, 2.0) != 0.0)) result += 1.0;
++    return std::copysign(result, value);
++}
++extern "C" float roundevenf(float value) { return static_cast<float>(roundeven(value)); }
++#endif
+ 
+ static int rnd_state;
+ static const int RND_A=48271;
+--- a/src/modules/bb/pixmap/pixmap.cpp
++++ b/src/modules/bb/pixmap/pixmap.cpp
+@@ -59,6 +59,7 @@
+ 	for( int i=0;i<width*height;i++ ){
+ 		unsigned char *p=&bits[bpp*i];
+ 		p[3]=(p[0]+p[1]+p[2])/3;
++		if(whiten) p[0]=p[1]=p[2]=255;
+ 	}
+ }
+ 
+--- a/src/modules/bb/runtime.sdl/runtime.sdl.cpp
++++ b/src/modules/bb/runtime.sdl/runtime.sdl.cpp
+@@ -111,7 +111,7 @@
+ 	SDL_Event event;
+ 	while( SDL_PollEvent(&event) ){
+ 		if( event.type == SDL_QUIT ){
+-			RTEX( 0 );
++			if( !bbRequestAppClose() ) RTEX( 0 );
+ 		}else if( event.type==SDL_WINDOWEVENT ){
+ 			if( event.window.event==SDL_WINDOWEVENT_FOCUS_LOST ){
+ 				bbKeyboard.reset();
+--- a/src/modules/bb/runtime/commands.decls
++++ b/src/modules/bb/runtime/commands.decls
+@@ -2,3 +2,5 @@
+ HidePointer():"bbHidePointer"
+ RuntimeError( message$ ):"bbRuntimeError"
+ MoveMouse( x%,y% ):"bbMoveMouse"
++AppCloseEvents( enable% ):"bbAppCloseEvents"
++AppCloseRequested%():"bbAppCloseRequested"
+--- a/src/modules/bb/runtime/commands.h
++++ b/src/modules/bb/runtime/commands.h
+@@ -14,6 +14,8 @@
+ void BBCALL bbHidePointer(  );
+ void BBCALL bbRuntimeError( BBStr *message );
+ void BBCALL bbMoveMouse( bb_int_t x,bb_int_t y );
++void BBCALL bbAppCloseEvents( bb_int_t enable );
++bb_int_t BBCALL bbAppCloseRequested(  );
+ 
+ #ifdef __cplusplus
+ }
+--- a/src/modules/bb/runtime/module.link.cpp
++++ b/src/modules/bb/runtime/module.link.cpp
+@@ -9,4 +9,6 @@
+ 	rtSym( "HidePointer","bbHidePointer",bbHidePointer );
+ 	rtSym( "RuntimeError$message","bbRuntimeError",bbRuntimeError );
+ 	rtSym( "MoveMouse%x%y","bbMoveMouse",bbMoveMouse );
++	rtSym( "AppCloseEvents%enable","bbAppCloseEvents",bbAppCloseEvents );
++	rtSym( "%AppCloseRequested","bbAppCloseRequested",bbAppCloseRequested );
+ }
+--- a/src/modules/bb/runtime/runtime.cpp
++++ b/src/modules/bb/runtime/runtime.cpp
+@@ -7,6 +7,22 @@
+ BBRuntime *bbRuntime;
+ BBHook *bbRuntimeOnSuspend;
+ BBHook *bbRuntimeOnResume;
++static bool appCloseEvents=false;
++static bool appCloseRequested=false;
++
++// Opt-in close events let the application finish saving before End.
++bool bbRequestAppClose(){
++  appCloseRequested=true;
++  return appCloseEvents;
++}
++
++void BBCALL bbAppCloseEvents( bb_int_t enable ){
++  appCloseEvents=enable!=0;
++}
++
++bb_int_t BBCALL bbAppCloseRequested(){
++  return appCloseRequested ? 1 : 0;
++}
+ 
+ #include <cstdlib>
+ #include <iostream>
+@@ -51,6 +67,8 @@
+ }
+ 
+ BBMODULE_CREATE( runtime ){
++  appCloseEvents=false;
++  appCloseRequested=false;
+   bbRuntimeOnSuspend=d_new BBHook();
+   bbRuntimeOnResume=d_new BBHook();
+   return true;
+--- a/src/modules/bb/runtime/runtime.h
++++ b/src/modules/bb/runtime/runtime.h
+@@ -24,6 +24,7 @@
+ 
+ void *bbRuntimeWindow();
+ bool bbRuntimeIdle();
++bool bbRequestAppClose();
+ 
+ extern BBRuntime *bbRuntime;
+ extern BBHook *bbRuntimeOnSuspend;
+--- a/src/modules/bb/stub/stub.cpp
++++ b/src/modules/bb/stub/stub.cpp
+@@ -1,6 +1,7 @@
+ #include <bb/blitz/blitz.h>
+ #include <bb/runtime/runtime.h>
+ #include "stub.h"
++#include <iostream>
+ 
+ bool bbruntime_run( void (*pc)(),bool dbg ){
+ 	bb_env.debug=dbg;
+@@ -13,6 +14,7 @@
+ 		_bbDebugInfo( "Program has ended" );
+ 	}catch( bbEx &x ){
+ 		if( x.err!="" ) {
++			std::cerr << "Runtime error: " << x.err << std::endl;
+ 			_bbDebugError( x.err.c_str() );
+ 			err=true;
+ 		}
+--- a/src/modules/bb/timer/CMakeLists.txt
++++ b/src/modules/bb/timer/CMakeLists.txt
+@@ -1,10 +1,6 @@
+ bb_start_module(timer)
+ set(DEPENDS_ON bb.runtime)
+ set(SOURCES timer.cpp timer.h)
+-if(BB_WINDOWS)
+-  set(SOURCES ${SOURCES} timer.windows.cpp)
+-  set(LIBS winmm)
+-else()
+-  set(SOURCES ${SOURCES} timer.noop.cpp)
+-endif()
++# Use the same monotonic catch-up timer on both native platforms.
++set(SOURCES ${SOURCES} timer.noop.cpp)
+ bb_end_module()
+--- a/src/runtime/base/bbruntime_dll.rc
++++ b/src/runtime/base/bbruntime_dll.rc
+@@ -7,7 +7,7 @@
+ //
+ // Generated from the TEXTINCLUDE 2 resource.
+ //
+-#include "afxres.h"
++#include <winresrc.h>
+ 
+ /////////////////////////////////////////////////////////////////////////////
+ #undef APSTUDIO_READONLY_SYMBOLS
+--- a/src/runtime/opengl/CMakeLists.txt
++++ b/src/runtime/opengl/CMakeLists.txt
+@@ -20,7 +20,9 @@
+ bb_addmodule(input.nx)
+ # bb_addmodule(input.directinput8)
+ bb_addmodule(audio)
+-bb_addmodule(audio.fmod)
++if(NOT BB_HARDTIME_CLI)
++  bb_addmodule(audio.fmod)
++endif()
+ bb_addmodule(audio.openal)
+ bb_addmodule(blitz3d.gl)
+ bb_addmodule(userlibs)
+--- a/src/tools/CMakeLists.txt
++++ b/src/tools/CMakeLists.txt
+@@ -10,7 +10,7 @@
+   ENDIF()
+ ENDIF()
+ 
+-IF(BB_MSVC AND NOT BB_CROSSCOMPILE)
++IF(BB_MSVC AND NOT BB_CROSSCOMPILE AND NOT BB_HARDTIME_CLI)
+   add_subdirectory(legacy/blitzide)
+   add_subdirectory(legacy/debugger)
+ ENDIF()
+--- a/src/tools/compiler/CMakeLists.txt
++++ b/src/tools/compiler/CMakeLists.txt
+@@ -1,7 +1,7 @@
+ set (CMAKE_EXECUTABLE_SUFFIX_ )
+ 
+ if(BB64 AND NOT BB_MINGW)
+-  set(REQUIRED_LLVM_VERSION 19.1.7)
++  set(REQUIRED_LLVM_VERSION 19.1.5) # upstream Windows SDK; Linux also accepts 19.1.7
+ 
+   set(LLVM_KNOWN_PATHS
+     $ENV{LLVM_ROOT}
+@@ -15,6 +15,17 @@
+ 
+   find_package(LLVM ${REQUIRED_LLVM_VERSION} PATHS ${LLVM_KNOWN_PATHS} NO_DEFAULT_PATH)
+   find_package(LLD PATHS ${LLVM_KNOWN_PATHS} NO_DEFAULT_PATH)
++
++  # Upstream's prebuilt LLVM exports its builder's absolute DIA SDK path.
++  # Resolve the installed x64 SDK instead of requiring that machine's layout.
++  if(BB_WINDOWS AND TARGET LLVMDebugInfoPDB)
++    find_library(BB_DIA_GUIDS NAMES diaguids
++      PATHS "$ENV{VSINSTALLDIR}/DIA SDK/lib/amd64" NO_DEFAULT_PATH REQUIRED)
++    get_target_property(BB_PDB_LIBS LLVMDebugInfoPDB INTERFACE_LINK_LIBRARIES)
++    list(FILTER BB_PDB_LIBS EXCLUDE REGEX "diaguids\\.lib$")
++    list(APPEND BB_PDB_LIBS "${BB_DIA_GUIDS}")
++    set_target_properties(LLVMDebugInfoPDB PROPERTIES INTERFACE_LINK_LIBRARIES "${BB_PDB_LIBS}")
++  endif()
+ 
+   # TODO: this will go away once CI is sorted...
+   if(NOT LLVM_FOUND OR NOT LLD_FOUND)
+@@ -201,7 +212,11 @@
+   elseif(BB_MACOS)
+     target_link_libraries(blitzcc lldMachO)
+   endif()
+-  target_link_libraries(blitzcc lldWasm lldELF LLVM zlibstatic)
++  if(BB_LINUX)
++    target_link_libraries(blitzcc lldWasm lldELF LLVM zlibstatic)
++  else()
++    target_link_libraries(blitzcc lldWasm lldELF ${LLVM_LIBS} zlibstatic)
++  endif()
+ endif()
+ 
+ if(BB_COVERAGE)
+@@ -212,6 +227,7 @@
+ if(BB_MSVC)
+   target_link_libraries(blitzcc StackWalker)
+   target_sources(blitzcc PUBLIC ../../stdutil/dpi.manifest)
++  configure_file(../../stdutil/dpi.manifest "${RELEASE_PATH}/bin/native.manifest" COPYONLY)
+ endif()
+ 
+ if(NOT BB_MSVC)
+--- a/src/tools/compiler/linker_lld/linker_lld.cpp
++++ b/src/tools/compiler/linker_lld/linker_lld.cpp
+@@ -4,6 +4,7 @@
+ #include <lld/Common/Driver.h>
+ #include <iostream>
+ #include <fstream>
++#include <sstream>
+ #include <vector>
+ #ifdef BB_POSIX
+ #include <libgen.h>
+@@ -81,7 +82,7 @@
+ 	}
+ 
+ 	bool windows=false,nux=false,nx=false;
+-	if( target.type=="windows" ){
++	if( target.type=="windows" || target.type=="win32" || target.type=="win64" ){
+ 		windows=true;
+ 	}else if( target.type=="linux" ){
+ 		nux=true;
+@@ -182,15 +183,24 @@
+ #ifdef BB_WINDOWS
+ 		args.push_back( "/errorlimit:0" );
+ 
+-		// args.push_back( "/subsystem:windows" );
++		args.push_back( "/subsystem:windows" );
++		args.push_back( "/entry:mainCRTStartup" );
++		args.push_back( "/manifest:embed" );
++		args.push_back( "/manifestinput:" + home + "/bin/native.manifest" );
+ 
+ 		args.push_back( "/nodefaultlib" );
+ 		args.push_back( "oldnames.lib" );
+-		std::string winsdk="C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.22621.0";
+-		std::string msvc="C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.32.31326";
+-		args.push_back( "/libpath:"+winsdk+"\\ucrt\\x64" );
+-		args.push_back( "/libpath:"+winsdk+"\\um\\x64" );
+-		args.push_back( "/libpath:"+msvc+"\\lib\\x64" );
++		// Use the selected Visual Studio environment, including newer SDKs.
++		const char *libenv = getenv("LIB");
++		if (!libenv || !*libenv) {
++			std::cerr << "Windows linking requires an x64 Visual Studio developer environment (LIB)." << std::endl;
++			exit(1);
++		}
++		std::stringstream directories(libenv);
++		std::string directory;
++		while (std::getline(directories, directory, ';')) {
++			if (!directory.empty()) args.push_back("/libpath:" + directory);
++		}
+ 
+ 		args.push_back( "libucrt.lib" );
+ 		args.push_back( "libvcruntime.lib" );

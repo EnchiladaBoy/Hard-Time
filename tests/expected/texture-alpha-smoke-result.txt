@@ -1,0 +1,1 @@
+PASS grayscale alpha, black mask, opaque RGB, explicit PNG alpha

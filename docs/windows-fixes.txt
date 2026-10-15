@@ -1,0 +1,48 @@
+WINDOWS x64 PORT NOTES
+
+Source correspondence
+  The original NSIS installer is extracted without executing it. The archived
+  BASIC files remain pinned to the existing repository revision. All 233
+  named game functions match recovered symbols from the supplied windowed
+  executable. This is source-assisted reconstruction, not a byte-identical
+  decompilation or an authenticated upstream source release.
+
+Build
+  The Windows patch follows the shared Linux/native corrections and is only
+  applied for windows-x64. It selects the published Windows LLVM 19.1.5 SDK,
+  uses MSVC/Windows SDK library paths from the chosen developer environment,
+  resolves DIA SDK libraries, and builds command-line tools without MFC,
+  TiltFive or FMOD. OpenAL Soft supplies the audio backend. COFF linking uses
+  the Windows GUI subsystem and embeds the native manifest.
+
+Runtime
+  The shared deterministic timer now runs on Windows, retaining missed ticks.
+  Windows fonts use original Comic Sans MS and standard Arial/Consolas/Times
+  New Roman families; bold/italic flags participate in native font selection
+  and font cache keys. Round-to-even helpers supply LLVM's missing CRT calls.
+  Errors also reach stderr for launcher logs.
+
+  The presented backbuffer is preserved in an OpenGL renderbuffer before a
+  WGL swap and restored afterwards. It never depends on reading an occluded
+  desktop front buffer. Allocation follows drawable size and resources are
+  released with the SDL context. This supports legacy post-Flip photographs
+  and repeated F12 captures.
+
+  Legacy texture alpha/mask flags produce grayscale alpha for source images
+  without an alpha channel, preserve explicit RGBA alpha, and whiten the
+  alpha-only texture's color. This fixes square shadows. Ordinary 2D images
+  keep their own masking rules.
+
+Save and shutdown
+  AppCloseEvents enables opt-in close handling. AppCloseRequested remains
+  set after SDL_QUIT, letting the game unwind its screen loop through normal
+  save/cleanup code before End. Other programs retain immediate close unless
+  they opt in. Alt+X follows the same cleanup route in this game.
+  Slot names are persisted after saving gameplay. Screenshot images are
+  released after saving. The launcher backs up Data and excludes concurrent
+  launches/updates. The on-disk int32/float32/string format is unchanged.
+
+Limitations
+  Focused testing is recorded in provenance/windows-validation.json.
+  This does not establish a complete playthrough or compatibility with every
+  GPU, audio device, controller, display scaling mode or Windows release.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fetch pinned upstream sources and apply the local ARM64 patches."""
+"""Fetch pinned upstream sources and apply the native platform patches."""
 import hashlib
 import json
 import os
@@ -9,16 +9,26 @@ import tempfile
 import urllib.request
 
 ROOT = Path(__file__).resolve().parents[1]
-WORK = Path(os.environ.get("HARDTIME_WORK_DIR", ROOT / ".work")).expanduser().resolve()
+PLATFORM = os.environ.get("HARDTIME_PLATFORM", "windows-x64" if os.name == "nt" else "linux-arm64")
+if PLATFORM not in ("linux-arm64", "windows-x64"):
+    raise RuntimeError(f"Unsupported HARDTIME_PLATFORM: {PLATFORM}")
+DEFAULT_WORK = ROOT / ".work" / "windows" if PLATFORM == "windows-x64" else ROOT / ".work"
+WORK = Path(os.environ.get("HARDTIME_WORK_DIR", DEFAULT_WORK)).expanduser().resolve()
 LOCK = json.loads((ROOT / "scripts/source-lock.json").read_text())
 PATCHES = ["engine-linux-arm64.patch", "build-dependency-sdl.patch",
            "build-dependency-vorbis.patch", "portable-build.patch", "game-linux.patch"]
+if PLATFORM == "windows-x64":
+    PATCHES += ["engine-windows-x64.patch", "game-windows.patch"]
 SUBMODULES = ["crossguid/src", "enet/tree", "freeimage/src", "freetype2/tree",
               "json-hpp/tree", "libpng/tree", "minimp3/tree", "ogg/tree",
               "sdl/tree", "toml11/tree", "utf8.h/tree", "vorbis/tree", "zlib/tree"]
+if PLATFORM == "windows-x64":
+    SUBMODULES += ["stackwalker/tree"]
 
 
 def run(*args, cwd=None, capture=False):
+    if args[0] == "git":
+        args = ("git", "-c", "core.autocrlf=false", *args[1:])
     return subprocess.run(args, cwd=cwd, check=True, text=True,
                           stdout=subprocess.PIPE if capture else None).stdout
 
@@ -40,7 +50,7 @@ def apply(path, patch):
     # Apply against a directory rather than Git's index. This also supports
     # the dependency submodule hunk and the upstream non-Git BASIC source.
     with tempfile.TemporaryDirectory(prefix="hardtime-patch-") as scratch:
-        args = ("git", "apply", "--unsafe-paths", "--directory=" + str(path), str(patch))
+        args = ("git", "apply", "--unsafe-paths", "--directory=" + path.as_posix(), str(patch))
         run(*args[:2], "--check", *args[2:], cwd=scratch)
         run(*args, cwd=scratch)
 
@@ -93,8 +103,11 @@ def main():
         (original / name).write_bytes(data)
         (game / name).write_bytes(data)
     apply(game, ROOT / "patches/game-linux.patch")
+    if PLATFORM == "windows-x64":
+        apply(engine, ROOT / "patches/engine-windows-x64.patch")
+        apply(game, ROOT / "patches/game-windows.patch")
     marker.write_text(json.dumps({"recipe_sha256": stamp, "engine_commit": LOCK["engine_commit"],
-                                  "game_commit": LOCK["commit"]}, indent=2) + "\n")
+                                  "game_commit": LOCK["commit"], "platform": PLATFORM}, indent=2) + "\n")
     print(f"Prepared pinned engine and game source: {WORK}")
 
 

@@ -1,10 +1,10 @@
-Native ARM64 regression tests
+Native Linux ARM64 and Windows x64 regression tests
 
 These small BASIC programs exercise compatibility fixes without game assets,
 save files, or photographs. The runner compiles each program with the built
-Blitz compiler, verifies ELF64 AArch64 output, runs it in a fresh temporary
-directory, and checks generated results. Existing game installations are not
-used. Python 3.9 or newer is required.
+Blitz compiler, verifies ELF64 AArch64 or PE32+ AMD64 output, runs it in a fresh
+temporary directory, and checks generated results. Existing game installations
+are not used. Python 3.9+ is sufficient for Linux; Windows uses 3.11+.
 
 Usage after building the engine and compiler:
   python3 tests/run.py
@@ -13,15 +13,27 @@ Usage after building the engine and compiler:
   python3 tests/run.py --all
   python3 tests/run.py --all --post-flip
 
+Windows (after python scripts/windows.py):
+  python tests/run.py --all --post-flip --software-renderer
+  python -m unittest discover -s tests -p test_windows_install.py -v
+
+Windows uses .work/windows and blitzcc64.exe by default, imports the selected
+Visual Studio x64 developer environment, and verifies native 64-bit PE output.
+--software-renderer uses the same pinned app-local Mesa DLLs as the installer.
+Omit it when testing a hardware OpenGL driver. It changes no system drivers.
+The Windows font probes substitute the game's Comic Sans MS and Arial families
+while retaining the original test assertions. --only NAME runs one regression.
+
 The default is the noninteractive numeric/boolean subset. --noninteractive
 explicitly selects that default. Every test initializes the OpenGL runtime,
-including the numeric tests, so an X display is required. For a private display:
+including the numeric tests. Linux requires an X display. For a private display:
   xvfb-run -a -s "-screen 0 1024x768x24" python3 tests/run.py --all
 
 The X server must provide a suitable OpenGL context. The original validation
 used Mesa llvmpipe on Fedora ARM64. The runner defaults to SDL's X11 driver
-and OpenAL's null backend; this suite does not test audible sound. Existing
-SDL_VIDEODRIVER and ALSOFT_DRIVERS environment overrides are respected.
+on Linux, Windows' SDL driver on Windows, and OpenAL's null backend on both;
+this suite does not test audible sound. Existing SDL_VIDEODRIVER and
+ALSOFT_DRIVERS environment overrides are respected.
 
 Compiler discovery, in order:
   --blitzpath RELEASE_DIRECTORY
@@ -68,6 +80,19 @@ Core tests
     before an active stage, and a second texture's lazy upload. Actual rendered
     center pixels must remain red.
 
+Windows --graphics additionally checks
+  texture-alpha-smoke: synthetic black/gray/white BMPs rendered with alpha,
+    mask and opaque texture flags, plus independently generated RGBA PNG alpha.
+  window-close-smoke: the runner waits for a ready file, finds only its child's
+    SDL window, sends WM_CLOSE, and requires application cleanup to write the
+    expected result before a successful exit.
+  capture-repeat-smoke: four different frames at each of 640x480 and 800x600
+    retain their pixels after Flip, GrabImage, SaveImage, FreeImage and reload.
+
+The six Windows installer unit checks cover preservation of saves/photos and
+original data, overlapping paths, unrelated destinations, binary architecture,
+installation locking and renderer mode mismatches.
+
 --fonts additionally checks
   font-smoke: ten load/render/free cycles of 95 printable ASCII characters
     at 96 px. Requires the intended Comfortaa installation for representative
@@ -89,10 +114,14 @@ Interactive and full-game validation
   this source-only suite. Test those with your own game data in a disposable
   installation. No recorded input test is presented as an automatic PASS.
   Long playthroughs, gamepad hardware, and other graphics drivers remain open.
+  The paragraph above describes the original Linux development checks.
+  Current Windows-only evidence and remaining limits are recorded separately
+  in provenance/windows-validation.json; Linux results are not Windows results.
 
 Source provenance
-  SOURCE-MANIFEST.json records the SHA256 of the unchanged development test
-  sources. Run python3 tests/run.py --verify-sources to check only these
-  hashes. Expected text files normalize CRLF to LF; no user paths or game
+  SOURCE-MANIFEST.json records the SHA256 of the original development test
+  sources and the added Windows regressions. Run
+  python3 tests/run.py --verify-sources to check only these hashes.
+  Expected text files normalize CRLF to LF; no user paths or game
   saves are included. When intentionally editing a regression, update its
   manifest hash and expected results after reviewing the changed behavior.

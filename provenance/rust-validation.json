@@ -1,0 +1,138 @@
+{
+  "schema": 1,
+  "date": "2026-10-16",
+  "timezone": "Australia/Sydney",
+  "code_commit": "ead990ea31f05d61693f77d8904eb64c496b5386",
+  "scope": "Rust environment preview 01; not full gameplay parity",
+  "toolchain": {
+    "rustc": "1.99.0 (b940084d7 2026-09-28)",
+    "bevy": "0.20.0",
+    "wgpu": "30.0.1",
+    "target": "x86_64-pc-windows-msvc",
+    "static_crt": true
+  },
+  "host": {
+    "os": "Windows 11 Pro 26200",
+    "cpu": "Intel Core Ultra 5 245K; 4 available cores",
+    "ram_gib": 11.9,
+    "renderer": "Direct3D 12 / Microsoft Basic Render Driver",
+    "driver": "10.0.26100.9711",
+    "shader_compiler": "Windows FXC"
+  },
+  "checks": {
+    "cargo_fmt": "passed",
+    "cargo_clippy_workspace_all_targets_warnings_denied": "passed",
+    "core_unit_tests_passed": 12,
+    "package_tests_passed": 3,
+    "clock": {
+      "display_rates_hz": [
+        30,
+        60,
+        75,
+        120,
+        144,
+        165,
+        240
+      ],
+      "duration_seconds": 10,
+      "expected_and_observed_ticks_per_rate": 300,
+      "pause_and_long_stalls": "passed"
+    },
+    "original_data": {
+      "populated_slots_roundtripped": 2,
+      "characters_roundtripped": 156,
+      "all_models_parsed": 67,
+      "triangles_parsed": 134150,
+      "save_and_settings_files_unchanged": 172
+    },
+    "gui_smoke": {
+      "exit_code": 0,
+      "seconds": 39.09,
+      "executable_sha256": "993ed1de9d8e5db07ed885a42f92d1defacd32c27dbc55a43a6bbc80e281b3fc",
+      "data_files_unchanged": 172,
+      "repeated_capture_below_hud": "pixel identical",
+      "unicode_executable_and_asset_paths": true,
+      "path_only_windows_system32": true,
+      "captures": {
+        "courtroom.png": {
+          "sha256": "2edf78352da2c8113ce76b3fb777281169c56797fcef46276e72e1a8f45f867a",
+          "distinct_colors": 61446
+        },
+        "hall.png": {
+          "sha256": "18fec7c3e39044c7a3bfd0ee988878fc3f945697aeba3b66336fd1145da39467",
+          "distinct_colors": 36653
+        },
+        "hospital.png": {
+          "sha256": "11cc0b5534725050834346faf0cd3fba0d88c772e092498fccb6014e53233324",
+          "distinct_colors": 51039
+        },
+        "kitchen.png": {
+          "sha256": "2e949b663744dfb78238859c61d7eab69df2969f96d57c9bb8904592f9078500",
+          "distinct_colors": 39408
+        },
+        "menu.png": {
+          "sha256": "66929f6ebb20bfb248edbaa72b577930566285357a8a51adafb035eaa3c6af42",
+          "distinct_colors": 11864
+        },
+        "prison-after-capture.png": {
+          "sha256": "bd71e6c33d0b1962f1e532fd427d83bcce0ff06be3628e1b7f031e0b343d1f0b",
+          "distinct_colors": 32535
+        },
+        "prison.png": {
+          "sha256": "b776d38c7ffa46cd3ba6046c62fe41e633b94903b3be691c7358cffd47a9ed6a",
+          "distinct_colors": 32540
+        },
+        "saved-games.png": {
+          "sha256": "48d9a2b821a88f691861534dd75d1e434d96f774d7f828805dcd090f82fe53a1",
+          "distinct_colors": 22211
+        },
+        "study.png": {
+          "sha256": "2a99eb2c13f8bb393df75fd4650741367da0cab2e9c18405cea6f01b485bb21a",
+          "distinct_colors": 66168
+        },
+        "toilets.png": {
+          "sha256": "439a8395434f4fedc9d1ac8baf16f1cf704d4961f20404e811ac79b2fea93caa",
+          "distinct_colors": 54804
+        },
+        "workshop.png": {
+          "sha256": "8dacdc925896709d901899f15b6be91959b036a238cda33ba9308e1d0157d282",
+          "distinct_colors": 58318
+        },
+        "yard.png": {
+          "sha256": "dd79502bf5ebb767e5f3d184b0fe4e8d3e8db5a26ad79561bdb703a69300a96d",
+          "distinct_colors": 110327
+        }
+      },
+      "result": "PASS Rust window, all nine original rooms loaded, 30 movement ticks, save-slot menu, twelve screenshot capture events, clean exit\nInspect PNG files separately to verify rendered output.\nframes=754\nticks=750\n"
+    },
+    "interactive_input": {
+      "mouse_explore_button": "passed",
+      "W_movement": "passed; captured camera position changed",
+      "P_pause": "passed; paused label shown",
+      "F12": "one valid PNG saved under isolated non-English LocalAppData path",
+      "mouse_saved_games_button": "passed; slots displayed",
+      "mouse_exit_button": "passed; exit code 0"
+    },
+    "missing_world_failure": "smoke test returns exit code 1",
+    "portable_imports": "dumpbin lists only Windows system DLLs; no VC runtime DLL or Blitz3D/SDL dependency"
+  },
+  "artifact": {
+    "path": "dist/Hard-Time-Rust-preview.zip",
+    "bytes": 32272882,
+    "sha256": "9a8577db5448614e63e87e0aded204724c3ec89cea663cf4d12ce6816832eab7",
+    "exe_sha256": "993ed1de9d8e5db07ed885a42f92d1defacd32c27dbc55a43a6bbc80e281b3fc",
+    "third_party_notice_packages": 389,
+    "original_game_assets_in_archive": false
+  },
+  "ci_url": "https://github.com/EnchiladaBoy/Hard-Time/actions/runs/38740404249",
+  "limitations": [
+    "No character simulation/animation, collision, combat, AI, missions, dialogue, gameplay audio or save writing. Existing saves can be inspected but gameplay cannot resume.",
+    "Static, unlit environment rendering is not yet visually equivalent to the original engine. Several world overrides and animations remain to port.",
+    "Original Block/ID.PNG and Hall/LEG.JPG material references have no matching local file and use a fallback material.",
+    "The current menu targets a 1280x720 window; smaller windows/desktops can clip its content.",
+    "Hardware GPUs, Windows 10, physical controllers and high-refresh displays were not tested. AutoVsync requests display refresh; software rendering here does not establish high-FPS performance.",
+    "Repeated-capture comparison covers two stationary cell-block frames below y=180, excluding the changing HUD. It is not a universal graphics-driver guarantee.",
+    "No original assets or player save bytes are committed. Evidence captures outside docs/images remain local in .work/validation."
+  ],
+  "local_launcher": "dist/Hard-Time-Rust-preview/Play Rust Preview.cmd; uses the existing local dist/Hard-Time-Windows-x64 assets; not included in the portable ZIP"
+}

@@ -39,6 +39,10 @@ cargo run --release --locked -p hardtime-rust -- --assets "C:\Games\Hard Time"
 
 The original game folder is read only. No original assets are distributed with the preview. Packaged builds need no Rust installation; the [Rust workflow](.github/workflows/rust.yml) produces a Windows preview ZIP with dependency notices. See the [Rust guide](rust/README.txt) for controls, packaging, tests and the migration order.
 
+<p align="center"><img src="docs/images/rust-preview.png" alt="The new Rust preview menu over the original cell-block geometry" width="850"><br><sub>Actual Rust preview capture. Original game artwork © Mat Dickie 2007.</sub></p>
+
+[Recorded Rust checks](provenance/rust-validation.json): 12 core tests, 3 package tests, byte-exact import of two saves with 156 characters, all 67 model files parsed, and all nine locations rendered on Windows. Twelve captures, real mouse/keyboard controls and non-English paths were checked; all 172 source save/settings files remained unchanged. Hardware GPUs and high-refresh monitors still need testing.
+
 ## What's improved
 
 The existing playable Windows port keeps the original game and adds a more comfortable way to play. These features describe the BASIC/Blitz3D build; the Rust preview has the smaller scope above.

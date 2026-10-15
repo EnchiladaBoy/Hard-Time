@@ -57,7 +57,7 @@ Find the new options under **Options → Modern Settings** and **Options → Red
 
 **One setup app. No build tools to install.** The standalone Windows installer downloads the original game from MDickie's website, adds the native build and support files, and creates a Play shortcut.
 
-1. Download **`Hard-Time-Setup.exe`** from the [Windows setup releases](https://github.com/EnchiladaBoy/Hard-Time/releases).
+1. **[Download Hard-Time-Setup.exe (26 MB)](https://github.com/EnchiladaBoy/Hard-Time/releases/download/setup-v0.1.1-preview/Hard-Time-Setup.exe)** from the [Windows setup preview release](https://github.com/EnchiladaBoy/Hard-Time/releases/tag/setup-v0.1.1-preview).
 2. Open it and click **Install game**. Setup automatically selects `hardtime_setup.exe` from Downloads when present; otherwise it offers the official download. You can also choose an original game folder.
 3. Click **Play Hard Time**, or use the **Hard Time (Native)** shortcut.
 

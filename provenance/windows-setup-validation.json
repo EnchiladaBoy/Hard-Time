@@ -46,6 +46,18 @@
     "imports": "Windows system DLLs or the bundled OpenAL and Mesa DLLs",
     "separate_visual_cpp_redistributable_required": false
   },
+  "published_release": {
+    "tag": "setup-v0.1.1-preview",
+    "source_commit": "3636a09",
+    "url": "https://github.com/EnchiladaBoy/Hard-Time/releases/tag/setup-v0.1.1-preview",
+    "workflow": "https://github.com/EnchiladaBoy/Hard-Time/actions/runs/38729247446",
+    "workflow_conclusion": "success",
+    "setup_sha256": "fdfa0774458da0aae8f840282b155873339f45e547f6ba38255b79f6fb87c816",
+    "setup_bytes": 27670528,
+    "game_sha256": "5eb6d5e4b18eeceab0b1fafb5ba1df8fe4dfe134d97536b61d32a0e3baae50da",
+    "checksum_verified_after_public_download": true,
+    "downloaded_setup_gui_installed_and_launched_game_in_unicode_directory": true
+  },
   "limits": [
     "Local artifact record; release builds have their own attached checksum and payload manifest.",
     "Windows 10 and hardware OpenGL drivers were not exercised on this host.",

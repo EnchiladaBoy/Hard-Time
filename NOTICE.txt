@@ -18,6 +18,11 @@ release. Upstream dependencies retain their own notices in fetched source
 trees. This repository does not assign a new blanket license to the game,
 engine or their dependencies.
 
+The Rust migration retains the same Hard Time identity and original
+conditions. Its preview uses Bevy, wgpu and other Rust dependencies in
+place of Blitz3D. Packaged Rust builds include those dependencies' notices
+under licenses/. See rust/licenses/README.txt for notice provenance.
+
 The standalone Windows setup packages the rebuilt native program with its
 runtime support files. Original game assets are downloaded separately from
 MDickie's official site or copied from the player's local original game.

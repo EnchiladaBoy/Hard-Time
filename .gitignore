@@ -9,6 +9,7 @@
 /backups/
 /logs/
 /Photo Album/
+/target/
 __pycache__/
 *.pyc
 *.o

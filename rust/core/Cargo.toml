@@ -1,0 +1,10 @@
+[package]
+name = "hardtime-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license-file = "../../NOTICE.txt"
+
+[lints]
+workspace = true

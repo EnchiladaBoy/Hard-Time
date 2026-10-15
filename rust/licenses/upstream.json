@@ -1,0 +1,258 @@
+[
+  {
+    "packages": [
+      "accesskit"
+    ],
+    "revision": "a55d3e1a18bb9ef0e4bccc9083fb13c3e0ad8969",
+    "files": [
+      {
+        "path": "rust/licenses/accesskit/LICENSE-MIT",
+        "url": "https://raw.githubusercontent.com/AccessKit/accesskit/a55d3e1a18bb9ef0e4bccc9083fb13c3e0ad8969/LICENSE-MIT",
+        "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+      },
+      {
+        "path": "rust/licenses/accesskit/LICENSE-APACHE",
+        "url": "https://raw.githubusercontent.com/AccessKit/accesskit/a55d3e1a18bb9ef0e4bccc9083fb13c3e0ad8969/LICENSE-APACHE",
+        "sha256": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a"
+      }
+    ]
+  },
+  {
+    "packages": [
+      "accesskit_consumer",
+      "accesskit_windows",
+      "accesskit_winit"
+    ],
+    "revision": "c88605b96d04431f9c3c792464a0f2f253480e94",
+    "files": [
+      {
+        "path": "rust/licenses/accesskit_consumer/LICENSE-MIT",
+        "url": "https://raw.githubusercontent.com/AccessKit/accesskit/c88605b96d04431f9c3c792464a0f2f253480e94/LICENSE-MIT",
+        "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+      },
+      {
+        "path": "rust/licenses/accesskit_consumer/LICENSE-APACHE",
+        "url": "https://raw.githubusercontent.com/AccessKit/accesskit/c88605b96d04431f9c3c792464a0f2f253480e94/LICENSE-APACHE",
+        "sha256": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a"
+      }
+    ]
+  },
+  {
+    "packages": [
+      "bevy_scene_macros"
+    ],
+    "revision": "b3bdd75becaffe9a16677cf5bae5bd6d198f052b",
+    "files": [
+      {
+        "path": "rust/licenses/bevy_scene_macros/LICENSE-MIT",
+        "url": "https://raw.githubusercontent.com/bevyengine/bevy/b3bdd75becaffe9a16677cf5bae5bd6d198f052b/LICENSE-MIT",
+        "sha256": "508a77d2e7b51d98adeed32648ad124b7b30241a8e70b2e72c99f92d8e5874d1"
+      },
+      {
+        "path": "rust/licenses/bevy_scene_macros/LICENSE-APACHE",
+        "url": "https://raw.githubusercontent.com/bevyengine/bevy/b3bdd75becaffe9a16677cf5bae5bd6d198f052b/LICENSE-APACHE",
+        "sha256": "a6cba85bc92e0cff7a450b1d873c0eaa2e9fc96bf472df0247a26bec77bf3ff9"
+      }
+    ]
+  },
+  {
+    "packages": [
+      "clipboard-win"
+    ],
+    "revision": "3b27cf2bfd1adcfa6e0264eb51c1025ddaf0f342",
+    "files": [
+      {
+        "path": "rust/licenses/clipboard-win/LICENSE",
+        "url": "https://raw.githubusercontent.com/DoumanAsh/clipboard-win/3b27cf2bfd1adcfa6e0264eb51c1025ddaf0f342/LICENSE",
+        "sha256": "c9bff75738922193e67fa726fa225535870d2aa1059f91452c411736284ad566"
+      }
+    ]
+  },
+  {
+    "packages": [
+      "constgebra"
+    ],
+    "revision": "eae8e094e5779f42f1db2a7adf9036aa33744bc8",
+    "files": [
+      {
+        "path": "rust/licenses/constgebra/LICENSE-APACHE",
+        "url": "https://raw.githubusercontent.com/bevyengine/bevy/b3bdd75becaffe9a16677cf5bae5bd6d198f052b/LICENSE-APACHE",
+        "sha256": "a6cba85bc92e0cff7a450b1d873c0eaa2e9fc96bf472df0247a26bec77bf3ff9"
+      }
+    ],
+    "license_choice": "Apache-2.0",
+    "declaration_source": "https://github.com/knickish/constgebra/blob/eae8e094e5779f42f1db2a7adf9036aa33744bc8/Cargo.toml"
+  },
+  {
+    "packages": [
+      "dasp_sample"
+    ],
+    "revision": "97c3bb9b2363c0b46ac1633858bf1054fd02a980",
+    "files": [
+      {
+        "path": "rust/licenses/dasp_sample/LICENSE-MIT",
+        "url": "https://raw.githubusercontent.com/rustaudio/sample/97c3bb9b2363c0b46ac1633858bf1054fd02a980/LICENSE-MIT",
+        "sha256": "b1d6df41ed3aa96806e74c729444d7c121d90e6660a6aed01d298e03fde475a0"
+      },
+      {
+        "path": "rust/licenses/dasp_sample/LICENSE-APACHE",
+        "url": "https://raw.githubusercontent.com/rustaudio/sample/97c3bb9b2363c0b46ac1633858bf1054fd02a980/LICENSE-APACHE",
+        "sha256": "756c8d2ab2dc24f256e1455b5f03937f4933d83d7bc9f2d55009fc962377d512"
+      }
+    ]
+  },
+  {
+    "packages": [
+      "encase_derive",
+      "encase_derive_impl"
+    ],
+    "revision": "561121cd17298355de74c07a7206eb8329fd8347",
+    "files": [
+      {
+        "path": "rust/licenses/encase_derive/LICENSE",
+        "url": "https://raw.githubusercontent.com/teoxoy/encase/561121cd17298355de74c07a7206eb8329fd8347/LICENSE",
+        "sha256": "8876cdca96eb380d16d5ea32bf4529d85e87dedc7765ae2861a9bec7f34acbed"
+      }
+    ]
+  },
+  {
+    "packages": [
+      "gilrs-core"
+    ],
+    "revision": "07e286e24b046cf39e5c367daa2770b805a64692",
+    "files": [
+      {
+        "path": "rust/licenses/gilrs-core/LICENSE-MIT",
+        "url": "https://gitlab.com/gilrs-project/gilrs/-/raw/07e286e24b046cf39e5c367daa2770b805a64692/LICENSE-MIT",
+        "sha256": "74497fa3c93ebb5ec32d85de117469cb3fab3276f7c02426f14c0f19f31f4424"
+      },
+      {
+        "path": "rust/licenses/gilrs-core/LICENSE-APACHE",
+        "url": "https://gitlab.com/gilrs-project/gilrs/-/raw/07e286e24b046cf39e5c367daa2770b805a64692/LICENSE-APACHE",
+        "sha256": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2"
+      }
+    ]
+  },
+  {
+    "packages": [
+      "gl_generator"
+    ],
+    "revision": "ea503e8d5fb6d73c6030e6191ce738cd3bf3433e",
+    "files": [
+      {
+        "path": "rust/licenses/gl_generator/LICENSE",
+        "url": "https://raw.githubusercontent.com/brendanzab/gl-rs/ea503e8d5fb6d73c6030e6191ce738cd3bf3433e/LICENSE",
+        "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+      }
+    ]
+  },
+  {
+    "packages": [
+      "khronos_api"
+    ],
+    "revision": "f150967b1c44ae888e6676f93f639ebc82771bdc",
+    "files": [
+      {
+        "path": "rust/licenses/khronos_api/LICENSE",
+        "url": "https://raw.githubusercontent.com/brendanzab/gl-rs/f150967b1c44ae888e6676f93f639ebc82771bdc/LICENSE",
+        "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+      }
+    ]
+  },
+  {
+    "packages": [
+      "mutants"
+    ],
+    "revision": "9685de346012afb9c379432eaf9c6960e22185df",
+    "files": [
+      {
+        "path": "rust/licenses/mutants/LICENSE",
+        "url": "https://raw.githubusercontent.com/sourcefrog/cargo-mutants/9685de346012afb9c379432eaf9c6960e22185df/LICENSE",
+        "sha256": "479cbeb2506157776cf80abe31df18065d0fe50b5816ff77bfd75d5deb04ab5c"
+      }
+    ]
+  },
+  {
+    "packages": [
+      "profiling"
+    ],
+    "revision": "8271551172eb6fa4cba47369aedd93790c623df9",
+    "files": [
+      {
+        "path": "rust/licenses/profiling/LICENSE-MIT",
+        "url": "https://raw.githubusercontent.com/aclysma/profiling/8271551172eb6fa4cba47369aedd93790c623df9/LICENSE-MIT",
+        "sha256": "c8167fdeeed46d3f244d3f85c5bf998ce889343691c32be2c61a8bc4b5c08333"
+      },
+      {
+        "path": "rust/licenses/profiling/LICENSE-APACHE",
+        "url": "https://raw.githubusercontent.com/aclysma/profiling/8271551172eb6fa4cba47369aedd93790c623df9/LICENSE-APACHE",
+        "sha256": "10d30a673cd5e9349bdc02aeb48f14b3386d27d0da32df8f0a555d4aa16aa551"
+      }
+    ]
+  },
+  {
+    "packages": [
+      "spirv"
+    ],
+    "revision": "8afc3d0ac8e158128cd1410bb2e4b4c26ab11bb4",
+    "files": [
+      {
+        "path": "rust/licenses/spirv/LICENSE",
+        "url": "https://raw.githubusercontent.com/gfx-rs/rspirv/8afc3d0ac8e158128cd1410bb2e4b4c26ab11bb4/LICENSE",
+        "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+      }
+    ]
+  },
+  {
+    "packages": [
+      "taffy"
+    ],
+    "revision": "77f385683c1d698c91a23a259f87fdddf26925fb",
+    "files": [
+      {
+        "path": "rust/licenses/taffy/LICENSE",
+        "url": "https://raw.githubusercontent.com/DioxusLabs/taffy/77f385683c1d698c91a23a259f87fdddf26925fb/LICENSE",
+        "sha256": "f97daf1a0124413dccf399a4e6626b4b74acd05282f80b6d64ac82225650b77a"
+      }
+    ]
+  },
+  {
+    "packages": [
+      "wesl",
+      "wesl-macros",
+      "wgsl-parse",
+      "wgsl-types"
+    ],
+    "revision": "3ab716c0910e77f30c20415c9263cfaf6994f777",
+    "files": [
+      {
+        "path": "rust/licenses/wesl/LICENSE-MIT",
+        "url": "https://raw.githubusercontent.com/webgpu-tools/wesl-rs/3ab716c0910e77f30c20415c9263cfaf6994f777/LICENSE-MIT",
+        "sha256": "1847e0e0698142ed4347c1441a9fa81c8fbddd44b1d8bbcd5e3647f991759d7f"
+      },
+      {
+        "path": "rust/licenses/wesl/LICENSE-APACHE",
+        "url": "https://raw.githubusercontent.com/webgpu-tools/wesl-rs/3ab716c0910e77f30c20415c9263cfaf6994f777/LICENSE-APACHE",
+        "sha256": "59899c6091b540582ed617e8eeaac4919dc985ccfc35459ee9752b699be5205b"
+      }
+    ]
+  },
+  {
+    "packages": [
+      "wesl-core"
+    ],
+    "revision": "3840691945a378d433c7d8653da9cf03e5ff8a81",
+    "files": [
+      {
+        "path": "rust/licenses/wesl-core/LICENSE-MIT",
+        "url": "https://raw.githubusercontent.com/webgpu-tools/wesl-rs/3840691945a378d433c7d8653da9cf03e5ff8a81/LICENSE-MIT",
+        "sha256": "1847e0e0698142ed4347c1441a9fa81c8fbddd44b1d8bbcd5e3647f991759d7f"
+      },
+      {
+        "path": "rust/licenses/wesl-core/LICENSE-APACHE",
+        "url": "https://raw.githubusercontent.com/webgpu-tools/wesl-rs/3840691945a378d433c7d8653da9cf03e5ff8a81/LICENSE-APACHE",
+        "sha256": "59899c6091b540582ed617e8eeaac4919dc985ccfc35459ee9752b699be5205b"
+      }
+    ]
+  }
+]

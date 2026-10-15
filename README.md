@@ -4,18 +4,20 @@
 
 <p align="center">
   <strong>Mat Dickie's original prison simulator, running natively on modern machines.</strong><br>
-  An unofficial compatibility project built from archived BASIC source and a corrected Blitz3D NG runtime.
+  An unofficial compatibility project, now migrating the game runtime to Rust.
 </p>
 
 <p align="center">
   <a href="#windows-setup"><img src="https://img.shields.io/badge/Windows-x64-86b9df?style=flat-square&amp;labelColor=202a34" alt="Windows x64"></a>
   <a href="#linux-setup"><img src="https://img.shields.io/badge/Linux-ARM64-8ebfae?style=flat-square&amp;labelColor=202a34" alt="Linux ARM64"></a>
+  <a href="#rust-migration"><img src="https://img.shields.io/badge/Rust-migration_preview-ed9455?style=flat-square&amp;labelColor=202a34" alt="Rust migration preview"></a>
   <a href="#project-status"><img src="https://img.shields.io/badge/Status-experimental-ed9455?style=flat-square&amp;labelColor=202a34" alt="Status: experimental"></a>
 </p>
 
 <p align="center">
   <a href="#windows-setup"><strong>Get started</strong></a> &nbsp; / &nbsp;
   <a href="#screenshots">Screenshots</a> &nbsp; / &nbsp;
+  <a href="#rust-migration">Rust preview</a> &nbsp; / &nbsp;
   <a href="#whats-improved">Features</a> &nbsp; / &nbsp;
   <a href="docs/PLAY-WINDOWS.txt">Player guide</a> &nbsp; / &nbsp;
   <a href="https://github.com/EnchiladaBoy/Hard-Time/issues">Report a bug</a>
@@ -23,9 +25,23 @@
 
 ---
 
+## Rust migration
+
+**The new game runtime is being built in Rust.** The first preview renders nine original locations through Bevy and Direct3D 12, with a free-flying camera, display-synchronized rendering, an independent 30 Hz clock, read-only save inspection and screenshots.
+
+This is an **environment explorer**. Characters, collision, combat, AI, missions, dialogue, audio and save-writing still need to be ported. The [Windows setup below](#windows-setup) installs the existing playable BASIC/Blitz3D build. The setup and launcher remain in C# until the Rust game is ready for them.
+
+With the pinned Rust toolchain and Windows C++ build tools installed:
+
+```powershell
+cargo run --release --locked -p hardtime-rust -- --assets "C:\Games\Hard Time"
+```
+
+The original game folder is read only. No original assets are distributed with the preview. Packaged builds need no Rust installation; the [Rust workflow](.github/workflows/rust.yml) produces a Windows preview ZIP with dependency notices. See the [Rust guide](rust/README.txt) for controls, packaging, tests and the migration order.
+
 ## What's improved
 
-The Windows port keeps the original game and adds a more comfortable way to play.
+The existing playable Windows port keeps the original game and adds a more comfortable way to play. These features describe the BASIC/Blitz3D build; the Rust preview has the smaller scope above.
 
 | | In the native Windows build |
 | :--- | :--- |
@@ -138,7 +154,7 @@ Launch the installed `play.sh` printed by the installer. Linux uses its own buil
 
 ## Project status
 
-**Experimental and playable.** Windows testing covers menus, character creation, the courtroom introduction, movement, save/reload, window-close saves, display switching, settings and recovery.
+**The compatibility build is experimental and playable; the Rust migration is an environment preview.** The compatibility build's Windows testing covers menus, character creation, the courtroom introduction, movement, save/reload, window-close saves, display switching, settings and recovery.
 
 | Latest recorded Windows checks | Result |
 | :--- | :--- |
@@ -179,6 +195,7 @@ The crowd measurements keep AI active, so camera and dialogue changes prevent a 
 
 | Directory | What's inside |
 | :--- | :--- |
+| [`rust/`](rust) | New Rust core, save/model readers and Bevy environment preview. |
 | [`patches/`](patches) | Game, engine and dependency corrections. |
 | [`scripts/`](scripts) | Pinned source preparation, builds and local installation. |
 | [`setup/`](setup) | Standalone Windows installer and Play launcher in C#. |
@@ -187,7 +204,7 @@ The crowd measurements keep AI active, so camera and dialogue changes prevent a 
 | [`provenance/`](provenance) | Source revisions, hashes and validation records. |
 | [`docs/`](docs) | Player instructions, technical notes and credits. |
 
-Fetched sources and build products stay in the ignored `.work/` and `dist/` directories. Original game files and player saves stay local.
+Fetched sources and build products stay in the ignored `.work/`, `target/` and `dist/` directories. Original game files and player saves stay local.
 
 ## Credits & source
 
@@ -195,7 +212,8 @@ Fetched sources and build products stay in the ignored `.work/` and `dist/` dire
 
 - **Archived game source:** [softbie/hardtime-rebirth](https://github.com/softbie/hardtime-rebirth/tree/7fdfd95a71cc5b29974928b9a1151c1f3d6d0768)
 - **Engine:** [Blitz3D NG](https://github.com/blitz3d-ng/package/tree/d8d5d1be34dfac328e15d9e9b831d9572cde9d0f), with this project's compatibility patches
-- **Runtime:** SDL, OpenGL and OpenAL
+- **Compatibility runtime:** SDL, OpenGL and OpenAL
+- **Rust preview:** Bevy and wgpu, with third-party notices included when packaging
 
 All 18 original BASIC source files are hash-pinned, and all 233 named game functions match symbols recovered from the supplied executable. The independently hosted archive establishes close correspondence; it is not represented as an authenticated original source release or a byte-identical rebuild.
 

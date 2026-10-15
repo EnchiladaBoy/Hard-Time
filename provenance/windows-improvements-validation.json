@@ -1,5 +1,5 @@
 {
-  "date_utc": "2026-10-15T08:27:11.300368+00:00",
+  "date_utc": "2026-10-15T08:31:57.462791+00:00",
   "scope": "Six Windows improvements: resource lifetime, safer saves, display/HUD settings, controls/focus, audio groups and rendering overhead.",
   "host": {
     "os": "Windows 11 Pro 10.0.26200 AMD64",
@@ -155,7 +155,7 @@
     "fixture": "Fresh disposable copies of the same slot; 20 characters in location 9 at 800x600. Source saves are read only. Relocated characters have held-weapon references cleared.",
     "command": "python tests/benchmark_windows.py --assets <native-install-with-slot-2> --baseline <old.exe> --candidate <new.exe> --output <fresh-directory> --seconds 24 --warmup 8 --shadows 2",
     "sampling": "Internal counters, timed warm-up omitted, raw approximately two-second aggregates retained. Final-only runs also measured the final binary with complex shadows and no shadows.",
-    "interpretation": "These are nondeterministic scene samples with AI and camera changes, not a controlled speedup comparison. The final complex-shadow wide crowd sample spent 24240 of 25465 ms inside RenderWorld (including submission/driver work), at 0.825 FPS and 28.94 timer ticks/s. The shadows-off sample entered dialogue in every retained sample and averaged 40.35 FPS, so its average cannot isolate the effect of shadows. Crowded software-rendered scenes remain slow; there is no high-FPS guarantee.",
+    "interpretation": "These are nondeterministic scene samples with AI and camera changes, not a controlled speedup comparison. An older menu test instance was discovered during cleanup; it affected the earlier samples. With that instance closed, the final complex-shadow wide crowd sample spent 24272 of 25756 ms inside RenderWorld (including submission/driver work), at 1.864 FPS and 29.86 timer ticks/s. The earlier shadows-off sample entered dialogue in every retained sample and averaged 40.35 FPS, so its average cannot isolate the effect of shadows. Crowded software-rendered scenes remain slow; there is no high-FPS guarantee.",
     "trials": [
       {
         "name": "baseline",
@@ -240,7 +240,8 @@
             "promo": "214"
           }
         ],
-        "trial_group": "Pre-change comparison and development candidate"
+        "trial_group": "Pre-change comparison and development candidate",
+        "background_load_note": "An older menu test instance was still open. These samples include that additional load."
       },
       {
         "name": "candidate",
@@ -376,7 +377,8 @@
           "render_ms": 17465,
           "ui_ms": 537,
           "present_ms": 223
-        }
+        },
+        "background_load_note": "An older menu test instance was still open. These samples include that additional load."
       },
       {
         "name": "candidate",
@@ -512,7 +514,8 @@
           "render_ms": 24240,
           "ui_ms": 87,
           "present_ms": 16
-        }
+        },
+        "background_load_note": "An older menu test instance was still open. These samples include that additional load."
       },
       {
         "name": "candidate",
@@ -687,7 +690,171 @@
           "render_ms": 20463,
           "ui_ms": 1745,
           "present_ms": 738
-        }
+        },
+        "background_load_note": "An older menu test instance was still open. These samples include that additional load."
+      },
+      {
+        "name": "candidate",
+        "executable_sha256": "9c7720bc1453189c0b2e0f19ac2fbaa94e5fdf1a421bea7cba2f79f85ea06a9d",
+        "characters": 20,
+        "shadows": 2,
+        "sample_ms": 25756,
+        "fps": 1.8636434228917533,
+        "simulation_hz": 29.857120670911634,
+        "dialogue_samples": 0,
+        "rows": [
+          {
+            "elapsed_ms": "2496",
+            "frames": "3",
+            "ticks": "78",
+            "fps": "1.20192",
+            "simulation_hz": "31.25",
+            "location": "9",
+            "promo": "0",
+            "update_ms": "124",
+            "render_ms": "2357",
+            "ui_ms": "12",
+            "present_ms": "3"
+          },
+          {
+            "elapsed_ms": "2278",
+            "frames": "3",
+            "ticks": "73",
+            "fps": "1.31694",
+            "simulation_hz": "32.0457",
+            "location": "9",
+            "promo": "0",
+            "update_ms": "125",
+            "render_ms": "2138",
+            "ui_ms": "13",
+            "present_ms": "2"
+          },
+          {
+            "elapsed_ms": "2190",
+            "frames": "3",
+            "ticks": "66",
+            "fps": "1.36986",
+            "simulation_hz": "30.137",
+            "location": "9",
+            "promo": "0",
+            "update_ms": "109",
+            "render_ms": "2065",
+            "ui_ms": "13",
+            "present_ms": "3"
+          },
+          {
+            "elapsed_ms": "2195",
+            "frames": "2",
+            "ticks": "48",
+            "fps": "0.911162",
+            "simulation_hz": "21.8679",
+            "location": "9",
+            "promo": "0",
+            "update_ms": "78",
+            "render_ms": "2106",
+            "ui_ms": "9",
+            "present_ms": "2"
+          },
+          {
+            "elapsed_ms": "2433",
+            "frames": "2",
+            "ticks": "79",
+            "fps": "0.82203",
+            "simulation_hz": "32.4702",
+            "location": "9",
+            "promo": "0",
+            "update_ms": "117",
+            "render_ms": "2306",
+            "ui_ms": "8",
+            "present_ms": "2"
+          },
+          {
+            "elapsed_ms": "2042",
+            "frames": "10",
+            "ticks": "94",
+            "fps": "4.89716",
+            "simulation_hz": "46.0333",
+            "location": "9",
+            "promo": "0",
+            "update_ms": "149",
+            "render_ms": "1841",
+            "ui_ms": "44",
+            "present_ms": "8"
+          },
+          {
+            "elapsed_ms": "2698",
+            "frames": "16",
+            "ticks": "61",
+            "fps": "5.93032",
+            "simulation_hz": "22.6093",
+            "location": "9",
+            "promo": "0",
+            "update_ms": "106",
+            "render_ms": "2508",
+            "ui_ms": "69",
+            "present_ms": "14"
+          },
+          {
+            "elapsed_ms": "2209",
+            "frames": "2",
+            "ticks": "52",
+            "fps": "0.905387",
+            "simulation_hz": "23.5401",
+            "location": "9",
+            "promo": "0",
+            "update_ms": "78",
+            "render_ms": "2120",
+            "ui_ms": "9",
+            "present_ms": "2"
+          },
+          {
+            "elapsed_ms": "2070",
+            "frames": "2",
+            "ticks": "68",
+            "fps": "0.966184",
+            "simulation_hz": "32.8502",
+            "location": "9",
+            "promo": "0",
+            "update_ms": "102",
+            "render_ms": "1956",
+            "ui_ms": "10",
+            "present_ms": "2"
+          },
+          {
+            "elapsed_ms": "2804",
+            "frames": "3",
+            "ticks": "84",
+            "fps": "1.0699",
+            "simulation_hz": "29.9572",
+            "location": "9",
+            "promo": "0",
+            "update_ms": "129",
+            "render_ms": "2659",
+            "ui_ms": "14",
+            "present_ms": "2"
+          },
+          {
+            "elapsed_ms": "2341",
+            "frames": "2",
+            "ticks": "66",
+            "fps": "0.854336",
+            "simulation_hz": "28.1931",
+            "location": "9",
+            "promo": "0",
+            "update_ms": "102",
+            "render_ms": "2216",
+            "ui_ms": "10",
+            "present_ms": "2"
+          }
+        ],
+        "trial_group": "Final build, complex shadows, no other game instance",
+        "profile_totals_ms": {
+          "update_ms": 1219,
+          "render_ms": 24272,
+          "ui_ms": 211,
+          "present_ms": 42
+        },
+        "background_game_instances": 0
       }
     ]
   },

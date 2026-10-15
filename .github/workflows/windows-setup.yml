@@ -1,0 +1,73 @@
+name: Windows setup
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['setup-v*']
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-2022
+    timeout-minutes: 60
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.13'
+      - name: Build the game from pinned source
+        run: python scripts/windows.py --jobs 2
+      - name: Package the standalone installer
+        run: python scripts/package-windows.py
+      - name: Test setup recovery and installation
+        run: python tests/test_setup_windows.py
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: Hard-Time-Windows-Setup
+          path: |
+            dist/Hard-Time-Setup.exe
+            dist/Hard-Time-Setup.sha256
+            dist/Hard-Time-Setup.manifest.json
+          if-no-files-found: error
+      - name: Publish a tagged preview release
+        if: startsWith(github.ref, 'refs/tags/setup-v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $headers = @{
+            Authorization = "Bearer $env:GH_TOKEN"
+            Accept = 'application/vnd.github+json'
+            'X-GitHub-Api-Version' = '2022-11-28'
+          }
+          $body = @{
+            tag_name = $env:GITHUB_REF_NAME
+            name = "Hard Time for Windows - $env:GITHUB_REF_NAME"
+            draft = $true
+            prerelease = $true
+            body = @'
+          Download **Hard-Time-Setup.exe**, open it, and click **Install game**.
+
+          Setup downloads the original 2007 game directly from MDickie, or uses your own installer / game folder. It installs the native Windows x64 build, includes audio and graphics support, and creates a Play shortcut. No Python, Git, CMake, Visual Studio, or separate 7-Zip installation is needed.
+
+          Updates preserve existing native saves, photos and backups. Automatic graphics checks the driver on a fresh install; compatibility mode uses bundled Mesa and can be slow in crowded scenes. Windows 10/11 x64. This preview is unsigned.
+
+          The downloadable setup contains the rebuilt program and runtime support files. Original game assets are fetched separately from MDickie or copied locally. Hard Time is copyright Mat Dickie 2007; original credits and noncommercial conditions remain in place.
+
+          Maintainers: built from the tagged source and checked with the setup recovery/integration suite. SHA256 and payload manifest are attached.
+          '@
+          } | ConvertTo-Json
+          $release = Invoke-RestMethod -Method Post -Uri "$env:GITHUB_API_URL/repos/$env:GITHUB_REPOSITORY/releases" -Headers $headers -ContentType 'application/json' -Body $body
+          $upload = $release.upload_url -replace '\{.*\}$', ''
+          foreach ($name in @('Hard-Time-Setup.exe', 'Hard-Time-Setup.sha256', 'Hard-Time-Setup.manifest.json')) {
+            $uri = $upload + '?name=' + [Uri]::EscapeDataString($name)
+            Invoke-RestMethod -Method Post -Uri $uri -Headers $headers -ContentType 'application/octet-stream' -InFile (Join-Path 'dist' $name) | Out-Null
+          }
+          Invoke-RestMethod -Method Patch -Uri $release.url -Headers $headers -ContentType 'application/json' -Body '{"draft":false}' | Out-Null

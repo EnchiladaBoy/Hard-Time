@@ -55,7 +55,24 @@ Find the new options under **Options → Modern Settings** and **Options → Red
 
 ## Windows setup
 
-**Bring your original Windows copy of Hard Time.** This repository contains the port's patches, build scripts and documentation. The playable folder is built locally using your original game assets.
+**One setup app. No build tools to install.** The standalone Windows installer downloads the original game from MDickie's website, adds the native build and support files, and creates a Play shortcut.
+
+1. Download **`Hard-Time-Setup.exe`** from the [Windows setup releases](https://github.com/EnchiladaBoy/Hard-Time/releases).
+2. Open it and click **Install game**. Setup automatically selects `hardtime_setup.exe` from Downloads when present; otherwise it offers the official download. You can also choose an original game folder.
+3. Click **Play Hard Time**, or use the **Hard Time (Native)** shortcut.
+
+<p align="center"><img src="docs/images/setup.png" alt="Hard Time Setup with automatic original-game download, destination, graphics selection and shortcut options" width="700"></p>
+
+**Windows 10/11 x64.** Python, Git, CMake, Visual Studio and a separate 7-Zip installation are unnecessary for players. Setup uses Windows' included .NET Framework. It installs into your user folder without administrator rights; local-file installation works offline.
+
+**Updating?** Close the game, reopen setup and choose the same native installation folder. Saves, photos and backups are preserved. Setup can recover an interrupted update, and the Play launcher backs up saves before each run.
+
+**Graphics:** Automatic checks for an OpenGL 3.3 driver on a new installation and uses bundled Mesa when unavailable. It keeps the current renderer when updating. You can explicitly switch between GPU and compatibility graphics by rerunning setup. Software rendering can be very slow in crowded scenes; actual FPS depends on the scene and driver.
+
+This is an unsigned preview. The release includes a SHA256 checksum and payload manifest. Original game assets are fetched from MDickie or copied from your local game; they are not included in the setup download.
+
+<details>
+<summary><strong>Build from source or package the installer yourself</strong></summary>
 
 **You need:** Python 3.11+, Git, CMake, 7-Zip, and Visual Studio 2022 Build Tools with **Desktop development with C++**, Windows SDK, CMake tools/Ninja and DIA SDK. Allow roughly 15 GB for the build. The first build downloads pinned dependencies.
 
@@ -68,12 +85,9 @@ python scripts/windows.py --jobs 2
 python scripts/install-windows.py --installer "$env:USERPROFILE\Downloads\hardtime_setup.exe" --software-renderer
 ```
 
-Launch **`dist\Hard-Time-Windows-x64\Play Hard Time.cmd`**. The installer is extracted without executing it, and updating an existing native installation preserves its saves and photos.
+Launch **`dist\Hard-Time-Windows-x64\Play Hard Time.cmd`**. The original installer is extracted without executing it, and updating an existing native installation preserves its saves and photos.
 
 The command above uses the tested app-local Mesa software renderer. For an OpenGL 3.3-capable GPU driver, omit `--software-renderer` and use a separate destination. Software rendering can be very slow in crowded scenes; actual FPS depends on the scene and driver.
-
-<details>
-<summary><strong>Already have an extracted game, or want to use your GPU?</strong></summary>
 
 The asset directory must contain `Characters`, `Graphics`, `Sound`, `Weapons`, `World` and `Data`.
 
@@ -81,7 +95,16 @@ The asset directory must contain `Characters`, `Graphics`, `Sound`, `Weapons`, `
 python scripts/install-windows.py --assets "C:\Games\HardTimeOriginal" --destination "C:\Games\HardTimeNative"
 ```
 
-This example uses the system's GPU driver. Add `--software-renderer` for Mesa. Use a new destination when switching renderer modes, then copy your `Data` and `Photo Album` folders with both games closed.
+This Python installer example uses the system's GPU driver. Add `--software-renderer` for Mesa. With the Python workflow, use a new destination when switching renderer modes, then copy your `Data` and `Photo Album` folders with both games closed. The graphical setup handles renderer changes in place.
+
+To produce the standalone installer after building:
+
+```powershell
+python scripts/package-windows.py
+python tests/test_setup_windows.py
+```
+
+The output is **`dist\Hard-Time-Setup.exe`**. See the [setup guide](setup/README.txt) for packaging, recovery, automated installation and release builds.
 
 See the [Windows build guide](scripts/README-windows.txt) for prerequisites, tool discovery, alternate build directories and diagnostics.
 
@@ -119,9 +142,13 @@ Launch the installed `play.sh` printed by the installer. Linux uses its own buil
 | :--- | :--- |
 | Runtime regressions | **19 passed** |
 | Installer preservation and recovery checks | **8 passed** |
+| Standalone setup recovery checks | **16 passed** |
+| Packaged setup integration groups | **7 passed** |
 | SDL virtual-controller reconnect check | **Passed** |
 
 These are [recorded local results](provenance/windows-improvements-validation.json), not a live CI badge. Windows validation uses Windows 11 and Mesa llvmpipe. Physical controllers, hardware OpenGL drivers, 120/144 Hz displays and a full playthrough still need testing.
+
+The [setup validation record](provenance/windows-setup-validation.json) also covers downloading the original from MDickie, installing through the GUI, launching the game and creating a save backup. The [Windows setup workflow](.github/workflows/windows-setup.yml) packages tagged releases from source and checks installation with synthetic asset fixtures.
 
 <details>
 <summary><strong>Run the checks and inspect the evidence</strong></summary>
@@ -152,6 +179,7 @@ The crowd measurements keep AI active, so camera and dialogue changes prevent a 
 | :--- | :--- |
 | [`patches/`](patches) | Game, engine and dependency corrections. |
 | [`scripts/`](scripts) | Pinned source preparation, builds and local installation. |
+| [`setup/`](setup) | Standalone Windows installer and Play launcher in C#. |
 | [`tests/`](tests) | Runtime regressions, installer checks and profiling tools. |
 | [`tools/`](tools) | Read-only analysis of the original Blitz3D module. |
 | [`provenance/`](provenance) | Source revisions, hashes and validation records. |

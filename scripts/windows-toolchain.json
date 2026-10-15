@@ -1,4 +1,8 @@
 {
+  "sevenzip": {
+    "url": "https://github.com/ip7z/7zip/releases/download/26.04/7z2604-x64.exe",
+    "sha256": "d54bf805f9f3704d1e8db2fa3498ae7ef2df0312b40b558e7c71c734430a665d"
+  },
   "llvm": {
     "url": "https://github.com/blitz3d-ng/build-llvm/releases/download/v19.1.5/llvm-19.1.5-win64-msvc17.0.zip",
     "sha256": "08e755d7ba3247fe0533c6d9999d3cdee0545c499cfaf1506f7b24f4c6bf9144"

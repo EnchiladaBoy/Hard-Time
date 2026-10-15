@@ -17,3 +17,10 @@ is an altered version and is not the original Blitz Research or Blitz3D NG
 release. Upstream dependencies retain their own notices in fetched source
 trees. This repository does not assign a new blanket license to the game,
 engine or their dependencies.
+
+The standalone Windows setup packages the rebuilt native program with its
+runtime support files. Original game assets are downloaded separately from
+MDickie's official site or copied from the player's local original game.
+Setup includes unmodified 7-Zip components under GNU LGPL 2.1 or later, with
+additional terms for parts of 7z.dll. See the bundled licenses directory and
+https://www.7-zip.org/ for source code and redistribution information.

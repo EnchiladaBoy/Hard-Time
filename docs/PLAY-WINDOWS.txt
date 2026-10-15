@@ -1,6 +1,8 @@
 HARD TIME - NATIVE WINDOWS x64
 
-Launch "Play Hard Time.cmd". Keep this folder in a writable location.
+Launch "Play Hard Time.exe" or your Hard Time (Native) shortcut. Installations
+made with the Python build script use "Play Hard Time.cmd" instead.
+Keep this folder in a writable location.
 The launcher makes a dated copy of Data in backups before every run and
 records diagnostics in logs. It prevents two copies from using these saves
 at once. Closing the game window saves active gameplay before exiting.
@@ -46,8 +48,29 @@ feedback appears as assets load. The FPS counter reports frames and clock ticks.
 If software-renderer.txt is present, this installation uses Mesa llvmpipe on
 the CPU. This is useful when a modern OpenGL hardware driver is unavailable.
 It does not replace any Windows driver. Reduce resolution/population in the
-game's Options if needed. A hardware-rendered installation can be created in
-a separate folder with the repository's installer, omitting --software-renderer.
+game's Options if needed. To switch graphics modes, run Hard-Time-Setup.exe
+again, choose the existing installation folder, and select GPU driver or
+Compatibility. Your saves and photos are preserved. Automatic retains an
+existing installation's renderer; on a fresh installation it checks for an
+OpenGL 3.3 driver and falls back to compatibility graphics when unavailable.
+
+SETUP AND UPDATES
+Hard-Time-Setup.exe includes the compiled game and support files. Windows
+10/11 x64 supplies its .NET Framework runtime. Players do not need Python,
+Git, CMake, Visual Studio, or a separate 7-Zip installation.
+
+Setup can download the original 2007 installer directly from MDickie's site,
+or use your local installer / complete original game folder. It checks the
+original installer checksum, extracts it without executing it, and installs
+a separate native copy. Local-file installation works offline.
+
+Default location: %LOCALAPPDATA%\Programs\Hard Time
+Install for your own Windows account; administrator rights are not required.
+For an update, select the same native installation folder. Close the game
+first. If setup was interrupted, rerun setup to recover and finish updating.
+If a shortcut could not be created, open Play Hard Time.exe in that folder.
+To remove the portable installation, keep any wanted Data, Photo Album and
+backups folders elsewhere, then delete the installation folder and shortcuts.
 
 This is an unofficial compatibility port of Mat Dickie's original game.
 The name, credits and noncommercial conditions are retained; see NOTICE.txt.

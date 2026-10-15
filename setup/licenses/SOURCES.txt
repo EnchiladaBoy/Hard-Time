@@ -1,0 +1,24 @@
+Bundled dependency notices
+=========================
+
+These files retain upstream license text. Each component keeps its own
+terms; collecting notices does not assign a license to the whole game.
+
+Mesa 26.2.4:
+  Mesa-*.txt are unmodified files from licenses/ and docs/license.rst at:
+  https://gitlab.freedesktop.org/mesa/mesa/-/tree/mesa-26.2.4
+  The complete upstream license directory is included for reference; some
+  terms concern components not used by the bundled Windows llvmpipe driver.
+  Source files carry the applicable copyright and SPDX notices.
+  Binary distributor: https://github.com/pal1000/mesa-dist-win/releases/tag/26.2.4
+
+LLVM:
+  LLVM.txt is the Apache 2.0 license with LLVM exceptions and legacy notice:
+  https://github.com/llvm/llvm-project/blob/llvmorg-19.1.5/LICENSE.TXT
+
+LGPL 2.1 (7-Zip and applicable library components):
+  https://www.gnu.org/licenses/old-licenses/lgpl-2.1.txt
+
+The packager also copies the unmodified 7-Zip, OpenAL Soft, Blitz3D NG and
+engine dependency notices from the pinned build inputs. 7-Zip source and
+redistribution details are recorded in 7-Zip-source.txt and 7-Zip.txt.

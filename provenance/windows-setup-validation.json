@@ -1,0 +1,47 @@
+{
+  "date": "2026-10-15",
+  "platform": "Windows 11 x64, Microsoft Basic Display Adapter, Mesa llvmpipe",
+  "setup": {
+    "path": "dist/Hard-Time-Setup.exe",
+    "sha256": "e172007eba14b8ab7d00f428bb5fe0f73531092d2cdac822cb4afa5bb1b0c2e0",
+    "size_mib_rounded": 26.4,
+    "signed": false,
+    "game_sha256": "9c7720bc1453189c0b2e0f19ac2fbaa94e5fdf1a421bea7cba2f79f85ea06a9d",
+    "game_recipe_sha256": "1a3948a20d91dcfb8eeed2dbd342004b785df59cfeaa73cc7cd407944bafdb28",
+    "original_assets_embedded": false
+  },
+  "original_download": {
+    "url": "https://www.mdickie.com/downloads/new/hardtime_setup.exe",
+    "sha256": "72d4f6a2e9c22a77f63b2f90730cb71bb742ecf9c1782000f9a5e4cb641c6ca1",
+    "bytes": 20591920,
+    "matches_local_original": true,
+    "executed": false
+  },
+  "checks": {
+    "compiled_setup_core": 16,
+    "packaged_setup_integration_groups": 7,
+    "legacy_python_installer": 8,
+    "end_user_process_path_contains_only_windows": true,
+    "real_original_installer_extracted": true,
+    "unicode_and_spaced_destination": true,
+    "renderer_switch_preserves_saves_photos_backups": true,
+    "automatic_update_keeps_existing_renderer": true,
+    "locked_installation_unchanged": true,
+    "source_unchanged": true,
+    "invalid_original_rejected_before_destination_creation": true,
+    "rollback_interruption_boundaries": 4,
+    "gui_official_download_and_install": true,
+    "gui_play_button_starts_compiled_launcher_and_game": true,
+    "launcher_created_save_backup": true,
+    "installed_game_menu_visually_checked": true,
+    "game_close_exit_code": 0
+  },
+  "limits": [
+    "Local artifact record; release builds have their own attached checksum and payload manifest.",
+    "Windows 10 and hardware OpenGL drivers were not exercised on this host.",
+    "The graphics probe checks the system driver in an isolated process; it does not guarantee performance or all driver behavior.",
+    "Core rollback tests simulate interruptions at commit boundaries; they are not physical power-cut tests.",
+    "Hosted CI uses synthetic asset fixtures; the official download and real-game GUI checks were performed locally.",
+    "The source and native-runtime limitations from the other provenance records still apply."
+  ]
+}

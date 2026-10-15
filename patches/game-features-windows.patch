@@ -1,0 +1,638 @@
+--- a/Anims.bb
++++ b/Anims.bb
+@@ -121,6 +121,7 @@
+ ;////////////////// MANAGE ANIMATIONS ///////////////////////////
+ ;----------------------------------------------------------------
+ Function Animations(cyc)
++ NativeProtectPlayer(cyc)
+  ;----------- 0-10: STANCES ----------
+  ;standing
+  If pAnim(cyc)=0
+@@ -492,6 +493,7 @@
+       WeaponImpact(cyc,v,blocked)
+       pHurtA#(v)=pA#(cyc) : pStagger#(v)=(8-contact)*0.2
+       If pStagger#(v)<0.2 Then pStagger#(v)=0.2 
++      NativeMeleeHit(cyc,v,blocked)
+       RiskAnger(cyc,v)
+       GainStrength(cyc,50)
+       DamageRep(cyc,v,0)
+@@ -543,6 +545,7 @@
+       EndIf
+       pHurtA#(v)=pA#(cyc) : pStagger#(v)=(8-contact)*0.3
+       If pStagger#(v)<0.3 Then pStagger#(v)=0.3
++      NativeMeleeHit(cyc,v,blocked)
+       RiskAnger(cyc,v)
+       GainStrength(cyc,50)
+       DamageRep(cyc,v,0)
+@@ -579,6 +582,7 @@
+       ScarArea(v,EntityX(limb,1),pY#(v),EntityZ(limb,1),10)
+       GroundReaction(v) : pDT(v)=pDT(v)-10
+       pHealth(v)=pHealth(v)-GetPower(cyc)
++      NativeMeleeHit(cyc,v,0)
+       RiskAnger(cyc,v)
+       GainStrength(cyc,100)
+       DamageRep(cyc,v,0)
+@@ -637,6 +641,7 @@
+       WeaponImpact(cyc,v,blocked)
+       pHurtA#(v)=pA#(cyc) : pStagger#(v)=(8-contact)*0.2
+       If pStagger#(v)<0.2 Then pStagger#(v)=0.2
++      NativeMeleeHit(cyc,v,blocked)
+       RiskAnger(cyc,v)
+       GainStrength(cyc,25)
+       DamageRep(cyc,v,1)
+@@ -692,6 +697,7 @@
+      EndIf
+      WeaponImpact(cyc,v,blocked)
+      pHurtA#(v)=pA#(v)+180 : pStagger#(v)=1.2
++     NativeMeleeHit(cyc,v,blocked)
+      RiskAnger(cyc,v)
+      GainStrength(cyc,25)
+      DamageRep(cyc,v,1)
+@@ -743,6 +749,7 @@
+       WeaponImpact(cyc,v,blocked)
+       pHurtA#(v)=pA#(cyc) : pStagger#(v)=(8-contact)*0.2
+       If pStagger#(v)<0.2 Then pStagger#(v)=0.2
++      NativeMeleeHit(cyc,v,blocked)
+       RiskAnger(cyc,v)
+       GainStrength(cyc,50)
+       DamageRep(cyc,v,0)
+--- a/Crimes.bb
++++ b/Crimes.bb
+@@ -177,14 +177,7 @@
+  Next
+  ;introduce widescreen
+  If promoTim>0 And promoTim<10000 
+-  y#=60
+-  If promoTim=<25 Then y#=PercentOf#(60,promoTim*4) 
+-  If promoTim=>9975 Then y#=PercentOf#(60,(10000-promoTim)*4) 
+-  Color 0,0,0 : Rect rX#(0),rY#(0),rX#(800),rY#(y#),1
+-  y#=480
+-  If promoTim=<25 Then y#=600-PercentOf#(120,promoTim*4) 
+-  If promoTim=>9975 Then y#=600-PercentOf#(120,(10000-promoTim)*4) 
+-  Color 0,0,0 : Rect rX#(0),rY#(y#),rX#(800),rY#(600),1
++  NativeDialogueBars(promoTim)
+  EndIf 
+  ;determine font
+  SetFont font(4)
+--- a/Gameplay.bb
++++ b/Gameplay.bb
+@@ -127,6 +127,8 @@
+  If request=7 Then Outro()
+  If request=8 Then EditSelect()
+  If request=9 Then NativeSettingsMenu()
++ If request=10 Then NativeUtilityMenu(1) : screen=2
++ If request=11 Then NativeUtilityMenu(2) : screen=2
+  ;3D scenes
+  If request=50 Then Gameplay()
+  If request=51 Then Editor()
+@@ -302,6 +304,16 @@
+   If KeyDown(nativeKey(9)) And gotim>20 And keytim=0
+    PlaySound sMenuSelect : keytim=20
+    If gamPause=1 Then gamPause=0 Else gamPause=1
++   nativePauseChoice=1
++  EndIf
++  If gamPause=1 And keytim=0
++   If KeyDown(200) Or JoyYDir()=-1 Then nativePauseChoice=NativeClamp(nativePauseChoice-1,1,3) : keytim=6
++   If KeyDown(208) Or JoyYDir()=1 Then nativePauseChoice=NativeClamp(nativePauseChoice+1,1,3) : keytim=6
++   If KeyDown(28) Or JoyHit(buttAttack)
++    If nativePauseChoice=1 Then gamPause=0 : keytim=20
++    If nativePauseChoice=2 Then NativePauseMenu(1)
++    If nativePauseChoice=3 Then NativePauseMenu(2)
++   EndIf
+   EndIf
+   ;pause loop
+   If gamPause=0 
+@@ -417,6 +429,8 @@
+     PoolCycle()
+    EndIf
+   
++   NativeUpdateCheats()
++
+    ;LOCATION NOVELTIES
+    ;video screens
+    If gamLocation(slot)=9
+@@ -605,9 +619,15 @@
+  EndIf
+  ;paused state
+  If gamPause=1
+-  DrawOption(-1,rX#(400),rY#(300),"PAUSED","")
++  Local pauseFocus=foc
++  foc=nativePauseChoice
++  SetFont font(3) : Outline("PAUSED",400,180,0,0,0,255,255,255)
++  DrawOption(1,400,245,"RESUME","")
++  DrawOption(2,400,305,"AUDIO SETTINGS","")
++  DrawOption(3,400,365,"CHEATS","")
++  foc=pauseFocus
+   SetFont font(1)
+-  Outline("(Press '"+Key$(nativeKey(9))+"' to resume play)",rX#(400),rY#(300)+30,0,0,0,255,255,255)
++  Outline("Up / down and Enter, or '"+Key$(nativeKey(9))+"' to resume",400,420,0,0,0,255,255,255)
+  EndIf
+  ;mask shaky start
+  If gotim=<0 Then Loader("Please Wait","Finalizing World")
+@@ -647,6 +667,7 @@
+ If charHealth(gamChar(slot))>0 Then Loader("Please Wait","Leaving "+textLocation$(oldLocation))
+ FreeTimer timer
+ FreeEntity fader
++NativeClearDebris()
+ FreeEntity world
+ ;remove camera
+ If charHealth(gamChar(slot))>0 Then Loader("Please Wait","Removing Camera")
+--- a/Menus.bb
++++ b/Menus.bb
+@@ -80,7 +80,7 @@
+ timer=CreateTimer(30)
+ ClearOverlay
+ ;MAIN LOOP
+-foc=10 : oldfoc=foc
++foc=12 : oldfoc=foc
+ go=0 : gotim=0 : keytim=20
+ While go=0
+ 
+@@ -100,9 +100,9 @@
+ 	 If KeyDown(1) Then go=-1
+ 	 ;proceed
+ 	 If KeyDown(28) Or ButtonPressed()
+-	  If foc<6 Then foc=10 : keytim=10
+-	  If foc=>7 And foc=<9 Then go=1
+-	  If foc=10 And keytim=0 Then go=-1
++	  If foc<7 Then foc=12 : keytim=10
++	  If foc=>7 And foc=<11 Then go=1
++	  If foc=12 And keytim=0 Then go=-1
+ 	 EndIf
+ 	EndIf
+ 	
+@@ -111,8 +111,8 @@
+ 	 ;highlight options
+ 	 If KeyDown(200) Or JoyYDir()=-1 Then foc=foc-1 : PlaySound sMenuSelect : keytim=6
+ 	 If KeyDown(208) Or JoyYDir()=1 Then foc=foc+1 : PlaySound sMenuSelect : keytim=6
+-	 If foc<1 Then foc=10
+-	 If foc>10 Then foc=1
++	 If foc<1 Then foc=12
++	 If foc>12 Then foc=1
+ 	 ;browse left
+ 	 If KeyDown(203) Or JoyXDir()=-1
+ 	  If foc=1 Then optRes=optRes-1 : PlaySound sMenuBrowse : keytim=6
+@@ -155,7 +155,7 @@
+  DrawImage gLogo(3),rX#(400),rY#(50)
+  ;options
+  SetFont font(1)
+- x=400 : y=95 : spacer=45
++ x=400 : y=90 : spacer=39
+  DrawOption(1,rX#(400),rY#(y),"Resolution",NativeResolutionName$(optRes)) : y=y+spacer
+  DrawOption(2,rX#(400),rY#(y),"Population",optPopulation+" Characters") : y=y+(spacer+5)
+  DrawOption(3,rX#(400),rY#(y),"Fog Effect",textOnOff$(optFog)) : y=y+spacer
+@@ -165,7 +165,9 @@
+  DrawOption(7,rX#(400),rY#(y),"REDEFINE KEYS","") : y=y+spacer
+  DrawOption(8,rX#(400),rY#(y),"REDEFINE GAMEPAD","") : y=y+(spacer+5)
+  DrawOption(9,rX#(400),rY#(y),"MODERN SETTINGS","") : y=y+spacer
+- DrawOption(10,rX#(400),rY#(y),"<<< BACK <<<","")
++ DrawOption(10,rX#(400),rY#(y),"AUDIO SETTINGS","") : y=y+spacer
++ DrawOption(11,rX#(400),rY#(y),"CHEATS","") : y=y+spacer
++ DrawOption(12,rX#(400),rY#(y),"<<< BACK <<<","")
+ 
+  NativePresent()
+  ;screenshot (F12)
+@@ -181,7 +183,9 @@
+  If foc=7 Then screen=3
+  If foc=8 Then screen=4
+  If foc=9 Then screen=9
+- If foc=10 Then screen=1
++ If foc=10 Then screen=10
++ If foc=11 Then screen=11
++ If foc=12 Then screen=1
+ EndIf
+ If go=-1 Then screen=1
+ End Function
+--- a/Modern.bb
++++ b/Modern.bb
+@@ -1,5 +1,8 @@
+ ; Modern display, controls and settings menus.
+ Include "NativePreferences.bb"
++Include "NativeBars.bb"
++Include "NativeCheats.bb"
++Include "NativeUtilityMenus.bb"
+ 
+ Function NativeBeginUI(extra#=1.0)
+  Local scale#=GraphicsWidth()/800.0
+@@ -125,6 +128,7 @@
+      If foc=8 Then go=-1
+      If page=2 And foc=5 Then NativeKeyPreset(1) : PlaySound sMenuSelect
+      If page=2 And foc=6 Then go=1
++     If page=3 And foc=5 Then go=2
+      If foc=7
+       If page=1
+        NativeDisplayApply()
+@@ -160,7 +164,8 @@
+    DrawOption(2,400,165,"Music",nativeMusic+"%")
+    DrawOption(3,400,220,"Sound effects",nativeEffects+"%")
+    DrawOption(4,400,275,"Ambience",nativeAmbience+"%")
+-   SetFont font(1) : Outline("Alarm sound: disabled",400,350,0,0,0,230,230,230)
++   DrawOption(5,400,330,"FULL AUDIO SETTINGS","")
++   SetFont font(1) : Outline("Alarm sound: disabled",400,385,0,0,0,230,230,230)
+   EndIf
+   DrawOption(7,400,440,"APPLY / SAVE","") : DrawOption(8,400,500,"<<< BACK <<<","")
+   SetFont font(1) : Outline("Up / down: select   Left / right: change   Enter: apply",400,555,0,0,0,230,230,230)
+@@ -170,6 +175,7 @@
+  optRes=nativeAppliedRes : nativeBorderless=nativeAppliedMode
+  SaveOptions()
+  If go=1 Then screen=3 Else screen=2
++ If go=2 Then screen=10
+ End Function
+ 
+ Function NativeResolutionName$(res)
+--- /dev/null
++++ b/NativeBars.bb
+@@ -0,0 +1,16 @@
++; Edge-to-edge bars, with subtitles retained in the centered logical UI.
++Function NativeDialogueBars(ticks)
++ Local scale#=GraphicsWidth()/800.0,amount#=1.0,margin#,top,bottom
++ If GraphicsHeight()/600.0<scale# Then scale#=GraphicsHeight()/600.0
++ If ticks<25 Then amount#=ticks/25.0
++ If ticks>9975 Then amount#=(10000-ticks)/25.0
++ If amount#<0 Then amount#=0
++ margin#=(GraphicsHeight()-600*scale#)/2
++ top=Ceil((margin#+60*scale#)*amount#)
++ bottom=Ceil((margin#+120*scale#)*amount#)
++ DrawTransform 1,1,0,0
++ Color 0,0,0
++ If top>0 Then Rect 0,0,GraphicsWidth(),top,1
++ If bottom>0 Then Rect 0,GraphicsHeight()-bottom,GraphicsWidth(),bottom,1
++ DrawTransform scale#,scale#,(GraphicsWidth()-800*scale#)/2,margin#
++End Function
+--- /dev/null
++++ b/NativeCheats.bb
+@@ -0,0 +1,113 @@
++; Cheats only affect the player's attacks. Existing corpses are never revived.
++Dim nativeLiving(200)
++Dim nativeDebris(24),nativeDebrisLife(24)
++Dim nativeDebrisX#(24),nativeDebrisY#(24),nativeDebrisZ#(24),nativeDebrisFloor#(24)
++Global nativeDebrisNext=0,nativePauseChoice=1
++
++Function NativeInvincible(cyc)
++ If nativeGodMode=0 Or cyc<1 Or cyc>no_plays Then Return 0
++ Return pChar(cyc)=gamChar(slot) And nativeLiving(cyc)
++End Function
++
++Function NativeProtectPlayer(cyc)
++ If nativeLiving(cyc)=0 Then Return
++ If NativeInvincible(cyc)
++  pHealth(cyc)=100 : pInjured(cyc)=0 : pDazed(cyc)=0
++  charInjured(pChar(cyc))=0
++  If pHP(cyc)<10 Then pHP(cyc)=10
++ Else
++  If nativeLimbPunch=0 Or pChar(cyc)=gamChar(slot)
++   If pHealth(cyc)<=0 And (pAnim(cyc)=76 Or pAnim(cyc)=77) And pAnimTim(cyc)>=150 Then nativeLiving(cyc)=0
++   Return
++  EndIf
++  ; Preserve the original knockdown/disability mechanics, but stop fatal damage.
++  If pHealth(cyc)<25 Then pHealth(cyc)=25
++ EndIf
++ charHealth(pChar(cyc))=pHealth(cyc)
++ If pAnim(cyc)=76 Then ChangeAnim(cyc,82)
++ If pAnim(cyc)=77 Then ChangeAnim(cyc,85)
++End Function
++
++Function NativeBranch(limb,root)
++ Local parent=limb,steps=0
++ While parent>0 And steps<40
++  If parent=root Then Return 1
++  parent=limbSource(parent) : steps=steps+1
++ Wend
++ Return 0
++End Function
++
++Function NativeThrowLimb(cyc,root,angle#)
++ Local n,entity,scale#=0.34+charHeight(pChar(cyc))*0.0025
++ nativeDebrisNext=nativeDebrisNext Mod 24+1 : n=nativeDebrisNext
++ If nativeDebris(n)>0 Then FreeEntity nativeDebris(n)
++ entity=CopyEntity(pLimb(cyc,root))
++ nativeDebris(n)=entity : nativeDebrisLife(n)=90
++ EntityType entity,0,True
++ PositionEntity entity,EntityX(pLimb(cyc,root),1),EntityY(pLimb(cyc,root),1),EntityZ(pLimb(cyc,root),1)
++ RotateEntity entity,EntityPitch(pLimb(cyc,root),1),EntityYaw(pLimb(cyc,root),1),EntityRoll(pLimb(cyc,root),1)
++ ScaleEntity entity,scale#,scale#,scale#
++ nativeDebrisX#(n)=Sin(angle#)*2.5 : nativeDebrisY#(n)=3.0 : nativeDebrisZ#(n)=Cos(angle#)*2.5
++ nativeDebrisFloor#(n)=pGround#(cyc)+1
++ ShowEntity entity
++End Function
++
++Function NativeMeleeHit(attacker,target,blocked)
++ If nativeLimbPunch=0 And nativeSuperPunch=0 Then Return
++ If attacker<1 Or target<1 Or attacker>no_plays Or target>no_plays Or attacker=target Then Return
++ If pChar(attacker)<>gamChar(slot) Or pWeapon(attacker)>0 Or blocked Then Return
++ If nativeLiving(target)=0 Then Return
++ Local root=0,limb
++ If nativeLimbPunch
++  ; One whole arm/leg per landed hit; never detach the head or torso.
++  If pScar(target,4)<5 And pLimb(target,4)>0 Then root=4
++  If root=0 And pScar(target,17)<5 And pLimb(target,17)>0 Then root=17
++  If root=0 And pScar(target,31)<5 And pLimb(target,31)>0 Then root=31
++  If root=0 And pScar(target,34)<5 And pLimb(target,34)>0 Then root=34
++  If root>0
++   NativeThrowLimb(target,root,pA#(attacker))
++   LoseLimb(target,root,0,1)
++   For limb=4 To 36
++    If NativeBranch(limb,root)
++     pScar(target,limb)=5
++     If pLimb(target,limb)>0 Then HideEntity pLimb(target,limb)
++    EndIf
++   Next
++  EndIf
++  NativeProtectPlayer(target)
++ EndIf
++ If nativeSuperPunch Then pStagger#(target)=6.0
++End Function
++
++Function NativeUpdateCheats()
++ Local n,entity,y#
++ For n=1 To no_plays : NativeProtectPlayer(n) : Next
++ For n=1 To 24
++  entity=nativeDebris(n)
++  If entity>0
++   nativeDebrisLife(n)=nativeDebrisLife(n)-1
++   If nativeDebrisLife(n)<=0
++    FreeEntity entity : nativeDebris(n)=0
++   Else
++    y#=EntityY(entity)+nativeDebrisY#(n)
++    If y#<nativeDebrisFloor#(n)
++     y#=nativeDebrisFloor#(n) : nativeDebrisY#(n)=0
++     nativeDebrisX#(n)=nativeDebrisX#(n)*0.8 : nativeDebrisZ#(n)=nativeDebrisZ#(n)*0.8
++    Else
++     nativeDebrisY#(n)=nativeDebrisY#(n)-0.18
++     TurnEntity entity,6,3,5
++    EndIf
++    PositionEntity entity,EntityX(entity)+nativeDebrisX#(n),y#,EntityZ(entity)+nativeDebrisZ#(n)
++   EndIf
++  EndIf
++ Next
++End Function
++
++Function NativeClearDebris()
++ Local n
++ For n=1 To 24
++  If nativeDebris(n)>0 Then FreeEntity nativeDebris(n)
++  nativeDebris(n)=0 : nativeDebrisLife(n)=0
++ Next
++ nativeDebrisNext=0
++End Function
+--- /dev/null
++++ b/NativeExtrasPreferences.bb
+@@ -0,0 +1,48 @@
++; Versioned extension: keep NativeOptions.dat readable by existing builds.
++Global nativeMaster=100,nativeMute=0
++Global nativeLimbPunch=0,nativeGodMode=0,nativeSuperPunch=0
++Dim nativeExtra(5)
++
++Function NativeReadExtras(path$)
++ Local stream,n,checksum=1213484357,valid=1
++ If FileSize(path$)<>32 Then Return 0
++ stream=ReadFile(path$)
++ If stream=0 Then Return 0
++ If ReadInt(stream)<>1213484357 Or ReadInt(stream)<>1 Then CloseFile stream : Return 0
++ For n=1 To 5
++  nativeExtra(n)=ReadInt(stream) : checksum=checksum Xor nativeExtra(n)
++ Next
++ If ReadInt(stream)<>checksum Then valid=0
++ CloseFile stream
++ If nativeExtra(1)<0 Or nativeExtra(1)>100 Then valid=0
++ For n=2 To 5
++  If nativeExtra(n)<0 Or nativeExtra(n)>1 Then valid=0
++ Next
++ Return valid
++End Function
++
++Function NativeLoadExtras()
++ Local valid=NativeReadExtras("Data/NativeExtras.dat")
++ nativeMaster=100 : nativeMute=0 : nativeLimbPunch=0 : nativeGodMode=0 : nativeSuperPunch=0
++ If valid=0
++  If FileType("Data/NativeExtras.dat")=1 Then CopyFile "Data/NativeExtras.dat","Data/NativeExtras.corrupt.dat"
++  valid=NativeReadExtras("Data/NativeExtras.dat.bak")
++  If valid Then CopyFile "Data/NativeExtras.dat.bak","Data/NativeExtras.dat"
++ EndIf
++ If valid
++  nativeMaster=nativeExtra(1) : nativeMute=nativeExtra(2)
++  nativeLimbPunch=nativeExtra(3) : nativeGodMode=nativeExtra(4) : nativeSuperPunch=nativeExtra(5)
++ EndIf
++End Function
++
++Function NativeSaveExtras()
++ Local stream,n,checksum=1213484357
++ nativeExtra(1)=nativeMaster : nativeExtra(2)=nativeMute
++ nativeExtra(3)=nativeLimbPunch : nativeExtra(4)=nativeGodMode : nativeExtra(5)=nativeSuperPunch
++ stream=WriteFileAtomic("Data/NativeExtras.dat")
++ WriteInt stream,1213484357 : WriteInt stream,1
++ For n=1 To 5
++  WriteInt stream,nativeExtra(n) : checksum=checksum Xor nativeExtra(n)
++ Next
++ WriteInt stream,checksum : CloseFile stream
++End Function
+--- a/NativePreferences.bb
++++ b/NativePreferences.bb
+@@ -1,3 +1,5 @@
++Include "NativeExtrasPreferences.bb"
++
+ ; Native Windows preferences. Legacy Options.dat and slot formats stay readable.
+ Global nativeBorderless=0,nativeAppliedMode=-1,nativeAppliedRes=2,nativeHud=100
+ Global nativeSensitivity=100,nativeDistance=100,nativeAutoPause=1
+@@ -139,6 +141,7 @@
+   nativeMusic=nativeSetting(7) : nativeEffects=nativeSetting(8) : nativeAmbience=nativeSetting(9)
+   For n=1 To 9 : nativeKey(n)=nativeSetting(n+9) : Next
+  EndIf
++ NativeLoadExtras()
+  NativeSyncKeys() : NativeApplyAudio()
+ End Function
+ 
+@@ -154,12 +157,15 @@
+   WriteInt stream,nativeSetting(n) : checksum=checksum Xor nativeSetting(n)
+  Next
+  WriteInt stream,checksum : CloseFile stream
++ NativeSaveExtras()
+ End Function
+ 
+ Function NativeApplyAudio()
+- AudioGroupVolume 0,nativeEffects/100.0
+- AudioGroupVolume 1,nativeMusic/100.0
+- AudioGroupVolume 2,nativeAmbience/100.0
++ Local master#=nativeMaster/100.0
++ If nativeMute Then master#=0
++ AudioGroupVolume 0,master#*nativeEffects/100.0
++ AudioGroupVolume 1,master#*nativeMusic/100.0
++ AudioGroupVolume 2,master#*nativeAmbience/100.0
+  ; The alarm's base gain remains zero, independently of all category sliders.
+  SoundVolume sAlarm,0
+ End Function
+--- /dev/null
++++ b/NativeUtilityMenus.bb
+@@ -0,0 +1,83 @@
++; Shared Options / pause menus. Pause callers restore the outer loop counters.
++Function NativeUtilityMenu(page)
++ Local menuTimer=CreateTimer(30),direction,limit=7,title$,help$
++ foc=1 : go=0 : keytim=15 : ClearOverlay
++ If page=2 Then limit=5
++ While go=0
++  frames=NativeWaitTimer(menuTimer)
++  For framer=1 To frames
++   CaptureWorld : keytim=NativeClamp(keytim-1,0,20)
++   If keytim=0
++    If KeyDown(1) Then go=-1
++    If KeyDown(200) Or JoyYDir()=-1 Then foc=foc-1 : keytim=6
++    If KeyDown(208) Or JoyYDir()=1 Then foc=foc+1 : keytim=6
++    foc=NativeClamp(foc,1,limit)
++    direction=0
++    If KeyDown(203) Or JoyXDir()=-1 Then direction=-1
++    If KeyDown(205) Or JoyXDir()=1 Then direction=1
++    If KeyDown(28) Or ButtonPressed()
++     If foc=limit Then go=-1
++     If foc=limit-1
++      If page=1 Then nativeMaster=100 : nativeMute=0 : nativeMusic=100 : nativeEffects=100 : nativeAmbience=100
++      If page=2 Then nativeLimbPunch=0 : nativeGodMode=0 : nativeSuperPunch=0
++     Else
++      direction=1
++     EndIf
++     keytim=15
++    EndIf
++    If direction<>0
++     If keytim=0 Then keytim=6
++     If page=1
++      If foc=1 Then nativeMaster=NativeClamp(nativeMaster+direction*5,0,100)
++      If foc=2 Then nativeMusic=NativeClamp(nativeMusic+direction*5,0,100)
++      If foc=3 Then nativeEffects=NativeClamp(nativeEffects+direction*5,0,100)
++      If foc=4 Then nativeAmbience=NativeClamp(nativeAmbience+direction*5,0,100)
++      If foc=5 Then nativeMute=1-nativeMute
++     Else
++      If foc=1 Then nativeLimbPunch=1-nativeLimbPunch
++      If foc=2 Then nativeGodMode=1-nativeGodMode
++      If foc=3 Then nativeSuperPunch=1-nativeSuperPunch
++     EndIf
++    EndIf
++    NativeApplyAudio()
++   EndIf
++  Next
++  Cls : NativeRender() : TileImage gTile
++  title$="AUDIO SETTINGS" : If page=2 Then title$="CHEATS"
++  SetFont font(3) : Outline(title$,400,50,0,0,0,255,255,255)
++  If page=1
++   DrawOption(1,400,120,"Master volume",nativeMaster+"%")
++   DrawOption(2,400,175,"Music",nativeMusic+"%")
++   DrawOption(3,400,230,"Sound effects",nativeEffects+"%")
++   DrawOption(4,400,285,"Ambience",nativeAmbience+"%")
++   DrawOption(5,400,340,"Mute all",textOnOff$(nativeMute))
++   DrawOption(6,400,410,"RESET AUDIO","")
++   SetFont font(1) : Outline("Changes apply immediately. The alarm stays silent.",400,550,0,0,0,230,230,230)
++  Else
++   DrawOption(1,400,130,"Limb breaker",textOnOff$(nativeLimbPunch))
++   DrawOption(2,400,190,"Invincible player",textOnOff$(nativeGodMode))
++   DrawOption(3,400,250,"Super knockback",textOnOff$(nativeSuperPunch))
++   DrawOption(4,400,410,"DISABLE ALL","")
++   SetFont font(1)
++   help$="Unarmed hits remove limbs. Living NPCs survive while enabled."
++   If foc=2 Then help$="Prevents new injuries and keeps your health full."
++   If foc=3 Then help$="Unblocked unarmed hits send opponents stumbling."
++   Outline(help$,400,320,0,0,0,255,220,150)
++   Outline("Limb loss is saved. Turning cheats off does not restore limbs.",400,355,0,0,0,230,230,230)
++   Outline("Use a separate save slot for experiments.",400,550,0,0,0,230,230,230)
++  EndIf
++  DrawOption(limit,400,480,"SAVE & BACK","")
++  SetFont font(1) : Outline("Up / down: select   Left / right: change",400,580,0,0,0,230,230,230)
++  NativePresent()
++ Wend
++ FreeTimer menuTimer : SaveOptions() : ClearOverlay : FlushKeys : FlushJoy
++ nativeDiscardTicks=1
++End Function
++
++Function NativePauseMenu(page)
++ Local previousGo=go,previousFoc=foc,previousFrames=frames,previousFramer=framer
++ NativeUtilityMenu(page)
++ go=previousGo : foc=previousFoc : frames=previousFrames : framer=previousFramer
++ gamPause=1 : keytim=20
++ If nativeQuit Then go=-1
++End Function
+--- a/Players.bb
++++ b/Players.bb
+@@ -56,6 +56,7 @@
+   pSubX#(cyc)=9999 : pSubZ#(cyc)=9999
+   pEyes(cyc)=2 : pOldEyes(cyc)=-1
+   pHealth(cyc)=charHealth(pChar(cyc))
++  nativeLiving(cyc)=(pHealth(cyc)>0)
+   pHP(cyc)=charHP(pChar(cyc))
+   pInjured(cyc)=charInjured(pChar(cyc))
+   pWeapon(cyc)=0 : pPhone(cyc)=0
+@@ -150,6 +151,7 @@
+    GetInput(cyc)
+    TranslateInput(cyc)
+   EndIf
++  NativeProtectPlayer(cyc)
+   ;trigger falls
+   If (pHP(cyc)=<0 Or pHealth(cyc)=<0) And CollapseViable(cyc)
+    randy=Rnd(0,4)
+@@ -177,6 +179,7 @@
+   MoveEntity pPivot(cyc),0,pGravity#(cyc),0 
+   ;monitor status
+   MonitorStatus(cyc)
++  NativeProtectPlayer(cyc)
+   ;bind to chair/bed
+   If pAnim(cyc)=>100 And pAnim(cyc)=<109
+    If pAnim(cyc)=101
+@@ -291,6 +294,7 @@
+ 
+ ;SCAR SPECIFIC LIMB
+ Function ScarLimb(cyc,limb,chance)
++ If NativeInvincible(cyc) Then Return
+  If limb=0 Then chance=chance*2
+  randy=Rnd(0,chance)
+  If randy=0 And pScar(cyc,limb)=<4
+@@ -366,7 +370,9 @@
+ End Function
+ 
+ ;LOSE LIMB
+-Function LoseLimb(cyc,limb,chance)
++Function LoseLimb(cyc,limb,chance,forced=0)
++ If NativeInvincible(cyc) Then Return
++ If forced And (pLimb(cyc,limb)=0 Or limbSource(limb)=0) Then Return
+  ;assess significance
+  major=MajorLimb(limb)
+  ;risk loss
+@@ -376,8 +382,8 @@
+   chance=chance*2
+  EndIf
+  randy=Rnd(0,chance)
+- If randy=0 And optGore=>3 And limbSource(limb)>0 And pScar(cyc,limbSource(limb))=<4
+-  If (pScar(cyc,limbPrecede(limb))=>2 Or limbPrecede(limb)=0) And (pScar(cyc,limbSource(limb))=>2 Or limbSource(limb)=0)
++ If forced Or (randy=0 And optGore=>3 And limbSource(limb)>0 And pScar(cyc,limbSource(limb))=<4)
++  If forced Or ((pScar(cyc,limbPrecede(limb))=>2 Or limbPrecede(limb)=0) And (pScar(cyc,limbSource(limb))=>2 Or limbSource(limb)=0))
+    ;pain and mess
+    ProduceSound(p(cyc),sBleed,22050,1)
+    limbX#=EntityX(pLimb(cyc,limb),1)
+@@ -468,6 +474,7 @@
+ 
+ ;RISK INJURY
+ Function RiskInjury(cyc,chance)
++ If NativeInvincible(cyc) Then Return
+  randy=Rnd(0,chance)
+  If randy=0 And pInjured(cyc)=0
+   If pHealth(cyc)>0 Then ProduceSound(p(cyc),sAgony(Rnd(1,3)),22050,1) 
+@@ -632,4 +639,4 @@
+  If charIntelligence(char)>99 Then charIntelligence(char)=99
+  If charReputation(char)<30 Then charReputation(char)=30
+  If charReputation(char)>99 Then charReputation(char)=99
+-End Function
+\ No newline at end of file
++End Function
+--- a/Promos.bb
++++ b/Promos.bb
+@@ -517,14 +517,7 @@
+  oldFoc=camFoc
+  ;introduce widescreen
+  If gamPromo>0 
+-  y#=60
+-  If promoTim=<25 Then y#=PercentOf#(60,promoTim*4) 
+-  If promoTim=>9975 Then y#=PercentOf#(60,(10000-promoTim)*4) 
+-  Color 0,0,0 : Rect rX#(0),rY#(0),rX#(800),rY#(y#),1
+-  y#=480
+-  If promoTim=<25 Then y#=600-PercentOf#(120,promoTim*4) 
+-  If promoTim=>9975 Then y#=600-PercentOf#(120,(10000-promoTim)*4) 
+-  Color 0,0,0 : Rect rX#(0),rY#(y#),rX#(800),rY#(600),1
++  NativeDialogueBars(promoTim)
+  EndIf 
+  ;determine font
+  SetFont font(4)

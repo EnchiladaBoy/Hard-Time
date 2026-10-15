@@ -1,0 +1,144 @@
+{
+  "date_utc": "2026-10-15T15:32:01.317978+00:00",
+  "scope": "Playable Windows game: optional nonlethal limb breaker, player invincibility, super knockback, full-display dialogue bars, dedicated audio and pause menus.",
+  "platform": "Windows 11 x64; Mesa 26.2.4 llvmpipe; automated audio gain tests use OpenAL null output",
+  "game_sha256": "f3f69d72088e4feb2f7246aa410188c28499c1364cb0ee176ea19e4269a5dbe6",
+  "installer_sha256": "fc7460b95adf33780b12e319914a6ac14acbe5c22df1d4ecf7dadce3c4ac0741",
+  "source_preparation": {
+    "method": "Reapply the complete game patch chain to all 18 SHA256-verified original sources; compare normalized text of every resulting BASIC source with the compiled tree. Reuse the unchanged Windows compiler/runtime.",
+    "matching_files": 24,
+    "patch_sha256": "7fd6c96773c99b63077a437761b8563c1198e576de84a35a253a7535929b0ed2"
+  },
+  "runtime_checks": [
+    {
+      "name": "boolean-smoke",
+      "passed": true
+    },
+    {
+      "name": "rounding-smoke",
+      "passed": true
+    },
+    {
+      "name": "semantics",
+      "passed": true
+    },
+    {
+      "name": "runtime-smoke",
+      "passed": true
+    },
+    {
+      "name": "graphics-smoke",
+      "passed": true
+    },
+    {
+      "name": "material-smoke",
+      "passed": true
+    },
+    {
+      "name": "texture-alpha-smoke",
+      "passed": true
+    },
+    {
+      "name": "window-close-smoke",
+      "passed": true
+    },
+    {
+      "name": "capture-repeat-smoke",
+      "passed": true
+    },
+    {
+      "name": "timer-poll-smoke",
+      "passed": true
+    },
+    {
+      "name": "interpolation-smoke",
+      "passed": true
+    },
+    {
+      "name": "overlay-smoke",
+      "passed": true
+    },
+    {
+      "name": "audio-groups-smoke",
+      "passed": true
+    },
+    {
+      "name": "save-transaction-smoke",
+      "passed": true
+    },
+    {
+      "name": "preferences-smoke",
+      "passed": true
+    },
+    {
+      "name": "display-lifecycle-smoke",
+      "passed": true
+    },
+    {
+      "name": "dialogue-bars-smoke",
+      "passed": true
+    },
+    {
+      "name": "audio-settings-smoke",
+      "passed": true
+    },
+    {
+      "name": "font-smoke",
+      "passed": true
+    },
+    {
+      "name": "hud-fit-smoke",
+      "passed": true
+    },
+    {
+      "name": "graphics-postflip-smoke",
+      "passed": true
+    }
+  ],
+  "game_combat": {
+    "passed": true,
+    "fixture": "tests/fixtures/game-features.bb",
+    "runner": "tests/test_game_features_windows.py",
+    "evidence": ".work/validation/features-09c4edbf",
+    "checks": [
+      "Actual punch contact with cheats off and on",
+      "Blocked hits, held weapons and NPC attacks excluded",
+      "All four major limbs and descendants detached; vital body parts retained",
+      "Repeated lethal damage intercepted; preexisting corpse not revived",
+      "Player health/injury protection and both dying animations",
+      "Detached effects expire after 90 simulation ticks",
+      "Disabling restores normal damage",
+      "Character limb/health save and load roundtrip",
+      "Original save hashes unchanged"
+    ]
+  },
+  "game_ui": {
+    "passed": true,
+    "evidence": ".work/validation/menus-49cf8665",
+    "checks": [
+      "Options entries open and save settings",
+      "Master and three category controls, mute",
+      "Both pause submenus return to the same paused scene",
+      "Disable all cheats and unmute while paused",
+      "Resume and clean window-close save"
+    ]
+  },
+  "standalone_installer": {
+    "core_checks": 17,
+    "integration_groups": 12,
+    "legacy_upgrade_tested": false,
+    "original_installer_tested": true,
+    "installer_language": "Rust",
+    "setup_sha256": "fc7460b95adf33780b12e319914a6ac14acbe5c22df1d4ecf7dadce3c4ac0741",
+    "windows_only_path": true
+  },
+  "local_update": {
+    "passed": true,
+    "saves_photos_backups_preserved_byte_exact": true
+  },
+  "limitations": [
+    "Only the Windows compatibility game has these features; the Rust game remains an environment preview.",
+    "Limb loss persists in saves; protection lasts while its cheat is enabled.",
+    "Hardware graphics, physical controller navigation, and audible output were not tested in this pass."
+  ]
+}

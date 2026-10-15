@@ -109,6 +109,23 @@ Windows --graphics additionally checks
     with fixtures to check round trips, bounds, truncated files and backup recovery.
   display-lifecycle-smoke: repeated mesh creation/freeing across five contexts,
     live resizing/fullscreen with retained images, desktop dimensions and restore.
+  dialogue-bars-smoke: actual game bar helper, animated entry/exit, edge pixels,
+    subtitle coordinates and overlay replay at 800x600, 1280x720, 1280x1024,
+    2560x1080 and 3840x2160.
+  audio-settings-smoke: actual game preferences and live OpenAL gains for master,
+    category, mute/unmute and the silent alarm; extension defaults, round trips,
+    checksum/range rejection and backup recovery. NativeOptions remains 84 bytes.
+
+Game combat integration (requires local original assets, never changes them):
+  python tests/test_game_features_windows.py --assets dist/Hard-Time-Windows-x64
+This compiles a separate test harness using all prepared game functions and
+real character models in an isolated installation. It checks actual punch
+contact, default-off behavior, block/weapon/NPC exclusions, all four detached
+limbs, survival during repeated damage, corpse exclusion, player invincibility,
+bounded effect cleanup, disabling cheats and the real character save roundtrip.
+It generates a fresh slot inside the test copy; no existing slot is required.
+--game-source selects a prepared game folder when reusing an unchanged runtime.
+The runtime test runner accepts the same override.
 
 The eight Windows installer unit checks cover preservation of saves/photos and
 original data, overlapping paths, unrelated destinations, binary architecture,

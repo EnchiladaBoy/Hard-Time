@@ -106,6 +106,13 @@ Modern settings
   Duplicate bindings swap rather than assigning one key to two actions.
   The SDL input driver discovers hotplug events and clears disconnected input.
   The alarm's zero base gain is preserved across all category-volume changes.
+  Dedicated Audio Settings and Cheats entries are available in Options and
+  pause. Master/mute multiply the existing category gains. NativeExtras.dat is
+  a checksum/range-checked extension, leaving NativeOptions.dat unchanged.
+  Nonlethal limb breaker, invincibility and super knockback default off. Limb
+  loss uses the existing character save format. Detached effects are limited
+  to 24 entities and three seconds, updated only on simulation ticks.
+  Dialogue/courtroom bars use the whole drawable, then restore the UI transform.
 
 Renderer maintenance
   Mesh buffers/arrays, scene resources, light representations, cached font
@@ -118,6 +125,7 @@ Regression checks (after building):
   python tests/run.py --all --post-flip --software-renderer
   python -m unittest discover -s tests -p test_windows_install.py -v
   python tests/test_controller_windows.py
+  python tests/test_game_features_windows.py --assets dist/Hard-Time-Windows-x64
 
 The regression runner creates isolated temporary files and uses silent OpenAL.
 It does not modify live saves or prove audible output. See tests/TESTS.txt.

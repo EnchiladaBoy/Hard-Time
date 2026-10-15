@@ -22,3 +22,7 @@ The setup interface and its small icon are drawn from repository code.
 
 setup-rust.png captures the actual replacement Rust installer, with illustrative
 source and installation paths. It is a direct window capture, without retouching.
+
+audio-settings.png and cheats.png are direct, unretouched window captures of
+the playable Windows build. They show the dedicated audio and cheats menus;
+both are also available from pause. The audio example uses test volume values.

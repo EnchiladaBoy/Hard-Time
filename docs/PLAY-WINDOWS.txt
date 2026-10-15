@@ -21,6 +21,26 @@ Options > Modern Settings has three pages. Use left/right on PAGE to switch.
   Audio: independent music, sound effects and ambience volume. Alarm audio
   remains disabled; its original gameplay events still work.
 
+Options > Audio Settings adds master volume and Mute all, with live changes
+and a Reset audio button. Muting preserves the individual volume settings.
+These controls are also on the pause screen: press P (or your remapped pause
+key), then use up/down and Enter to choose Audio Settings or Cheats. Returning
+from either menu keeps gameplay paused; select Resume or press the pause key.
+
+Options > Cheats (also available while paused) contains three optional toggles:
+  Limb breaker: each unblocked unarmed hit removes an arm or leg. Living NPCs
+  cannot die while enabled; existing corpses are not revived. Limbs briefly fly
+  away, then disappear. Weapons and NPC attacks do not trigger this effect.
+  Invincible player: keeps your health full and prevents new injuries or limb
+  loss. It does not restore previously missing limbs.
+  Super knockback: unblocked unarmed hits push opponents farther back.
+Cheats start off and your selections are remembered. Disable all switches them
+off together. Limb loss is saved: use a separate save slot for experiments.
+Disabling cheats restores normal damage; it does not undo injuries already made.
+
+Announcement and courtroom bars span the whole display, including ultrawide
+and tall aspect ratios. Dialogue text stays in the centered, scaled UI area.
+
 Options > Redefine Keys remaps movement, all four actions and pause. Assigning
 an occupied key swaps its two actions. Escape/Enter, Alt, F11 and F12 remain
 reserved. Original controls remain the default. Controllers can be unplugged
@@ -38,6 +58,8 @@ an interrupted directory switch automatically. Options use atomic writes
 and .bak recovery copies; damaged settings are preserved as .corrupt.dat.
 Resetting an occupied slot requires confirmation, with Cancel selected first.
 NativeOptions.dat stores modern preferences separately from legacy Options.dat.
+NativeExtras.dat stores master volume, mute and cheats, with the same atomic
+write and backup recovery behavior. Older NativeOptions.dat files still load.
 
 Gameplay, menus, pause and scripted dialogue render at the display's refresh
 rate when performance permits. Game speed and dialogue logic stay at their

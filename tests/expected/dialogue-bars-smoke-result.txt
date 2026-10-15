@@ -1,0 +1,1 @@
+PASS full-width animated bars, subtitle transform and overlay replay at five aspect/resolution combinations

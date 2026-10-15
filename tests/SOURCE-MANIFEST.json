@@ -20,6 +20,8 @@
     "sources/save-transaction-smoke.bb": "bf4e3aaec546eff673182383a1904cfe48ddafb65fd13a74b385053a1572a7e4",
     "sources/preferences-smoke.bb": "593af988f089279a8a714406229e1f74c295e4899ddecacbc19e0a48404baff3",
     "sources/display-lifecycle-smoke.bb": "efe70b3fa91319c6502429e55f55e7ad53da2ccdfd2e67d5c1c54ab3520bfc3d",
-    "sources/controller-reconnect.cpp": "14c1d29fc8d6f5645f67f0f118c1b9c43b5fd9c87f72fa4949f85c5c994a1bf6"
+    "sources/controller-reconnect.cpp": "14c1d29fc8d6f5645f67f0f118c1b9c43b5fd9c87f72fa4949f85c5c994a1bf6",
+    "sources/dialogue-bars-smoke.bb": "e9635a90cf68e01870cf439bd90101f4fe49fa8bc63ef6584345a827b891544e",
+    "sources/audio-settings-smoke.bb": "85af4d5247555f00a9d39533b49fda5719f66cc65e5d3ea65ec6afb50e723754"
   }
 }

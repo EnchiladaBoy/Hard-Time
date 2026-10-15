@@ -5,9 +5,9 @@ on:
   push:
     branches: [main]
     tags: ['setup-v*']
-    paths: ['setup/**', 'scripts/package-windows.py', 'scripts/rust_setup.py', 'tests/test_setup_windows.py', 'tests/test_setup_rust_gui.py', 'tests/fixtures/launcher_child.rs', 'rust-toolchain.toml', '.cargo/**', '.github/workflows/windows-setup.yml']
+    paths: ['setup/**', 'patches/**', 'scripts/**', 'tests/**', 'docs/PLAY-WINDOWS.txt', 'rust-toolchain.toml', '.cargo/**', '.github/workflows/windows-setup.yml']
   pull_request:
-    paths: ['setup/**', 'scripts/package-windows.py', 'scripts/rust_setup.py', 'tests/test_setup_windows.py', 'tests/test_setup_rust_gui.py', 'tests/fixtures/launcher_child.rs', 'rust-toolchain.toml', '.cargo/**', '.github/workflows/windows-setup.yml']
+    paths: ['setup/**', 'patches/**', 'scripts/**', 'tests/**', 'docs/PLAY-WINDOWS.txt', 'rust-toolchain.toml', '.cargo/**', '.github/workflows/windows-setup.yml']
 
 permissions:
   contents: read
@@ -27,6 +27,8 @@ jobs:
           python-version: '3.13'
       - name: Build the game from pinned source
         run: python scripts/windows.py --jobs 2
+      - name: Check game rendering, audio and save behavior
+        run: python tests/run.py --all --post-flip --software-renderer
       - name: Install pinned Rust and check the installer
         run: |
           rustup show active-toolchain

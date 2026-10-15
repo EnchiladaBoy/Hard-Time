@@ -52,11 +52,21 @@ The existing playable Windows port keeps the original game and adds a more comfo
 | **Display & HUD** | Desktop resolution, 1080p, 1440p and 4K; borderless mode; adjustable HUD size; automatic display-mode rollback. |
 | **Controls & camera** | Rebind movement, actions and pause. Use the WASD preset, tune camera sensitivity and distance, and reconnect controllers during play. |
 | **Saves & recovery** | Backups on launch, grouped save writes, damaged-settings recovery and confirmation before resetting an occupied slot. |
-| **Audio** | Separate music, effects and ambience sliders. The alarm stays silent while its gameplay events still work. |
+| **Audio** | Master volume, music, effects and ambience controls, plus mute. Available from Options and pause; the alarm stays silent. |
+| **Cheats** | Optional nonlethal limb-breaking hits, player invincibility and super knockback. Toggle them from Options or pause. |
 | **Rendering** | Display-refresh rendering for gameplay, menus and dialogue, with the original 30 Hz simulation. Reduced mesh/HUD work and graphics resource fixes. |
 | **Everyday play** | Pause on focus loss, save on window close, an FPS counter and screenshots. |
 
-Find the new options under **Options → Modern Settings** and **Options → Redefine Keys**. The Linux port retains its earlier feature set and the shared alarm mute.
+Find display/camera options under **Options → Modern Settings**, key bindings under **Redefine Keys**, and dedicated **Audio Settings** and **Cheats** entries. During play, pause with **P** and use the arrow keys and Enter to open audio or cheats. Announcement and courtroom bars fill the display at widescreen and ultrawide resolutions. The Linux port retains its earlier feature set and the shared alarm mute.
+
+Cheats default to off. Limb breaker removes one arm or leg per landed unarmed hit and keeps living NPCs alive while enabled. Limb loss is saved; turning the cheat off does not restore limbs. Use a separate save slot for experiments.
+
+<details>
+<summary>Audio controls and cheats</summary>
+
+<p align="center"><img src="docs/images/audio-settings.png" alt="Audio settings with master volume, music, effects, ambience and mute controls" width="48%"> <img src="docs/images/cheats.png" alt="Cheats menu with limb breaker, invincibility and super knockback, all disabled by default" width="48%"></p>
+
+</details>
 
 ## Screenshots
 
@@ -182,6 +192,8 @@ These are [recorded local results](provenance/windows-improvements-validation.js
 The [setup validation record](provenance/windows-setup-validation.json) also covers downloading the original from MDickie, installing through the GUI, launching the game and creating a save backup. The [Windows setup workflow](.github/workflows/windows-setup.yml) packages tagged releases from source and checks installation with synthetic asset fixtures.
 
 The [Rust installer validation](provenance/rust-setup-validation.json) records its separate recovery, package, previous-release upgrade and GUI checks. The Rust installer continues to install the complete compatibility game.
+
+The [game feature validation](provenance/windows-features-validation.json) covers the new combat cheats, audio settings, announcement bars, pause menus and an installer update that preserved saves and photos.
 
 <details>
 <summary><strong>Run the checks and inspect the evidence</strong></summary>

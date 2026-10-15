@@ -28,7 +28,7 @@ FONTS = ["font-smoke", "hud-fit-smoke"]
 WINDOWS_GRAPHICS = ["texture-alpha-smoke", "window-close-smoke", "capture-repeat-smoke",
                     "timer-poll-smoke", "interpolation-smoke", "overlay-smoke",
                     "audio-groups-smoke", "save-transaction-smoke", "preferences-smoke",
-                    "display-lifecycle-smoke"]
+                    "display-lifecycle-smoke", "dialogue-bars-smoke", "audio-settings-smoke"]
 RESULT_FILES = {
     "semantics": "semantics-results.txt",
     "graphics-postflip-smoke": "graphics-smoke-result.txt",
@@ -222,6 +222,7 @@ def run_save_test(binary, work, env, log, timeout):
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--blitzpath", help="Release directory containing bin/blitzcc and ARM64 runtime")
+    parser.add_argument("--game-source", type=Path, help="Prepared game source when reusing an unchanged compiler/runtime")
     parser.add_argument("--build-root", default=os.environ.get("HARDTIME_WORK_DIR") or os.environ.get("HARDTIME_BUILD_ROOT") or os.environ.get("BUILD_ROOT") or str(HERE.parent / (".work/windows" if WINDOWS else ".work")))
     parser.add_argument("--noninteractive", action="store_true", help="Run the default core numeric/boolean subset")
     parser.add_argument("--graphics", action="store_true", help="Also verify timers, save byte format, image/BMP operations and 3D materials")
@@ -284,19 +285,23 @@ def main() -> int:
                     png = b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">2I5B", 8, 8, 8, 6, 0, 0, 0))
                     png += chunk(b"IDAT", zlib.compress((b"\0" + bytes((255, 255, 255, 64)) * 8) * 8)) + chunk(b"IEND", b"")
                     (work / "alpha-rgba.png").write_bytes(png)
-                if name == "audio-groups-smoke":
+                if name in ("audio-groups-smoke", "audio-settings-smoke"):
                     import math
                     import wave
                     with wave.open(str(work / "tone.wav"), "wb") as audio:
                         audio.setparams((1, 2, 22050, 22050, "NONE", "not compressed"))
                         audio.writeframes(b"".join(struct.pack("<h", int(4000 * math.sin(n * math.tau * 440 / 22050)))
                                                    for n in range(22050)))
-                if name == "preferences-smoke":
-                    shutil.copy2(release.parent / "game/NativePreferences.bb", work / "NativePreferences.bb")
+                game_source = args.game_source or release.parent / "game"
+                if name in ("preferences-smoke", "audio-settings-smoke"):
+                    for include in ("NativePreferences.bb", "NativeExtrasPreferences.bb"):
+                        shutil.copy2(game_source / include, work / include)
+                if name == "dialogue-bars-smoke":
+                    shutil.copy2(game_source / "NativeBars.bb", work / "NativeBars.bb")
                 for dll, filename in dlls:
                     shutil.copy2(dll, work / filename)
                 source = HERE / "sources" / (name + ".bb")
-                if name == "preferences-smoke":
+                if name in ("preferences-smoke", "dialogue-bars-smoke", "audio-settings-smoke"):
                     shutil.copy2(source, work / source.name)
                     source = work / source.name
                 if WINDOWS and name in FONTS:

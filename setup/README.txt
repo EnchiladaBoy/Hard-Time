@@ -1,7 +1,7 @@
 HARD TIME STANDALONE SETUP
 
 Player flow
-  Run Hard-Time-Setup.exe on Windows 10/11 x64 and click Install game.
+  Run Hard-Time-Setup.exe on Windows 10 (1903+) / Windows 11 x64 and click Install game.
   If Downloads/hardtime_setup.exe exists, setup selects it automatically.
   Otherwise automatic download from MDickie's official HTTPS URL is selected.
   An extracted original game folder can also be selected. Install to a separate
@@ -38,6 +38,9 @@ Safety and recovery
   still needs hardware testing. The fallback does not change system drivers.
   The launcher holds the installation lock, backs up Data, records stdout and
   stderr, and displays a useful error if the game exits unsuccessfully.
+  The game's embedded manifest selects UTF-8 for legacy Windows file APIs,
+  allowing non-English account names and installation paths. This changes
+  only that process, not the Windows system locale.
 
 Build (maintainers only, after scripts/windows.py)
   python scripts/package-windows.py

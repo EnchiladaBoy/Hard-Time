@@ -334,9 +334,9 @@ namespace HardTimeSetup
                 using (Files.Lock(destination))
                 {
                     // Finish an interrupted setup before examining the installed save data.
+                    EnsureGameClosed(destination);
                     RecoverSetup(destination);
                     ValidateDestination(destination, inputSource);
-                    EnsureGameClosed(destination);
                     Files.RecoverData(destination);
                     progress(40, "Checking graphics support...");
                     software = SoftwareRenderer(options.Renderer, destination);

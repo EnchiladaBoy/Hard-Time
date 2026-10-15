@@ -56,7 +56,7 @@ OpenGL 3.3 driver and falls back to compatibility graphics when unavailable.
 
 SETUP AND UPDATES
 Hard-Time-Setup.exe includes the compiled game and support files. Windows
-10/11 x64 supplies its .NET Framework runtime. Players do not need Python,
+10 (1903+) / 11 x64 supplies its .NET Framework runtime. Players do not need Python,
 Git, CMake, Visual Studio, or a separate 7-Zip installation.
 
 Setup can download the original 2007 installer directly from MDickie's site,

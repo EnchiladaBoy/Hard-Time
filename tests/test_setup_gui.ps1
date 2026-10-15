@@ -31,7 +31,8 @@ try {
     (Field 'destination').Text = 'C:\Users\Player\AppData\Local\Programs\Hard Time'
     (Field 'downloadOriginal').Checked = $true
     Capture 'setup.png'
-    (Field 'destination').Text = Join-Path $evidence 'Installed game'
+    # Use an actual non-ASCII path, not just a Unicode textbox/copy test.
+    (Field 'destination').Text = Join-Path $evidence ('Installed game ' + [char]0x732b)
     (Field 'shortcuts').Checked = $false
     (Field 'source').Text = Join-Path $env:USERPROFILE 'Downloads\hardtime_setup.exe'
     (Field 'downloadOriginal').Checked = [bool]$DownloadOriginal

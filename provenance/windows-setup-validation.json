@@ -3,12 +3,14 @@
   "platform": "Windows 11 x64, Microsoft Basic Display Adapter, Mesa llvmpipe",
   "setup": {
     "path": "dist/Hard-Time-Setup.exe",
-    "sha256": "e172007eba14b8ab7d00f428bb5fe0f73531092d2cdac822cb4afa5bb1b0c2e0",
+    "sha256": "2ddce00bd919f31e100d6876b7199c81c12864968e5e5524c451a6720a3e1220",
     "size_mib_rounded": 26.4,
     "signed": false,
-    "game_sha256": "9c7720bc1453189c0b2e0f19ac2fbaa94e5fdf1a421bea7cba2f79f85ea06a9d",
+    "game_sha256": "3063b451eb82bdbbe72a658f9c8daa5a857d4bf682eb2fc82a246e7b679a7516",
     "game_recipe_sha256": "1a3948a20d91dcfb8eeed2dbd342004b785df59cfeaa73cc7cd407944bafdb28",
-    "original_assets_embedded": false
+    "original_assets_embedded": false,
+    "game_manifest": "scripts/windows-game.manifest",
+    "process_codepage": "UTF-8; requires Windows 10 1903 or newer"
   },
   "original_download": {
     "url": "https://www.mdickie.com/downloads/new/hardtime_setup.exe",
@@ -21,6 +23,7 @@
     "compiled_setup_core": 16,
     "packaged_setup_integration_groups": 7,
     "legacy_python_installer": 8,
+    "runtime_regressions_after_utf8_manifest": 19,
     "end_user_process_path_contains_only_windows": true,
     "real_original_installer_extracted": true,
     "unicode_and_spaced_destination": true,
@@ -34,7 +37,14 @@
     "gui_play_button_starts_compiled_launcher_and_game": true,
     "launcher_created_save_backup": true,
     "installed_game_menu_visually_checked": true,
+    "installed_game_launch_and_screenshot_in_non_ascii_directory": true,
     "game_close_exit_code": 0
+  },
+  "dependency_audit": {
+    "tool": "MSVC dumpbin /dependents",
+    "examined": ["Hard Time.exe", "OpenAL32.dll", "opengl32.dll", "libgallium_wgl.dll", "7z.exe", "7z.dll"],
+    "imports": "Windows system DLLs or the bundled OpenAL and Mesa DLLs",
+    "separate_visual_cpp_redistributable_required": false
   },
   "limits": [
     "Local artifact record; release builds have their own attached checksum and payload manifest.",

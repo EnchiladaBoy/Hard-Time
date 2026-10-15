@@ -55,6 +55,8 @@ def package(binary, output):
     legacy = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(legacy)
     legacy.verify_pe64(binary)
+    if b'UTF-8</activeCodePage>' not in binary.read_bytes():
+        raise RuntimeError('Rebuild with scripts/windows.py so the game supports non-ASCII installation paths.')
     runtime = windows.runtime_files(True)
     extractor = windows.dependency('sevenzip')
     output.parent.mkdir(parents=True, exist_ok=True)

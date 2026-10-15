@@ -117,6 +117,9 @@ def configure(cmake, jobs, configure_only=False):
     runtime_dll = openal / 'bin/Win64/soft_oal.dll'
     shutil.copy2(runtime_dll, WORK / 'release/bin/OpenAL32.dll')
     os.environ['blitzpath'] = str(WORK / 'release')
+    # Legacy narrow Windows filesystem calls must round-trip non-ASCII user
+    # directories. This is per process and does not change the system locale.
+    shutil.copy2(ROOT / 'scripts/windows-game.manifest', WORK / 'release/bin/native.manifest')
     run(WORK / 'release/bin/blitzcc64.exe', '-r', 'opengl', '-o',
         'Hard Time.exe', 'Gameplay.bb', cwd=WORK / 'game')
     shutil.copy2(runtime_dll, WORK / 'game/OpenAL32.dll')

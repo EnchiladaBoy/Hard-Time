@@ -57,7 +57,7 @@ jobs:
 
           Setup downloads the original 2007 game directly from MDickie, or uses your own installer / game folder. It installs the native Windows x64 build, includes audio and graphics support, and creates a Play shortcut. No Python, Git, CMake, Visual Studio, or separate 7-Zip installation is needed.
 
-          Updates preserve existing native saves, photos and backups. Automatic graphics checks the driver on a fresh install; compatibility mode uses bundled Mesa and can be slow in crowded scenes. Windows 10/11 x64. This preview is unsigned.
+          Updates preserve existing native saves, photos and backups. Automatic graphics checks the driver on a fresh install; compatibility mode uses bundled Mesa and can be slow in crowded scenes. Windows 10 (1903+) / Windows 11 x64, including non-English installation paths. This preview is unsigned.
 
           The downloadable setup contains the rebuilt program and runtime support files. Original game assets are fetched separately from MDickie or copied locally. Hard Time is copyright Mat Dickie 2007; original credits and noncommercial conditions remain in place.
 

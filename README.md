@@ -63,7 +63,7 @@ Find the new options under **Options → Modern Settings** and **Options → Red
 
 <p align="center"><img src="docs/images/setup.png" alt="Hard Time Setup with automatic original-game download, destination, graphics selection and shortcut options" width="700"></p>
 
-**Windows 10/11 x64.** Python, Git, CMake, Visual Studio and a separate 7-Zip installation are unnecessary for players. Setup uses Windows' included .NET Framework. It installs into your user folder without administrator rights; local-file installation works offline.
+**Windows 10 (1903 or newer) / Windows 11 x64.** Python, Git, CMake, Visual Studio and a separate 7-Zip installation are unnecessary for players. Setup uses Windows' included .NET Framework. It installs into your user folder without administrator rights; local-file installation works offline. Non-English usernames and installation paths are supported.
 
 **Updating?** Close the game, reopen setup and choose the same native installation folder. Saves, photos and backups are preserved. Setup can recover an interrupted update, and the Play launcher backs up saves before each run.
 
@@ -164,7 +164,7 @@ python tests/test_controller_windows.py
 The tests use isolated data. The [test guide](tests/TESTS.txt) describes their coverage and the optional crowd benchmark.
 
 - [Modern settings, recovery and performance measurements](provenance/windows-improvements-validation.json)
-- [Current Windows artifact hashes](provenance/windows-build.json)
+- [Portable Windows build hashes](provenance/windows-build.json)
 - [Initial Windows compatibility checks](provenance/windows-validation.json)
 - [Refresh-rate implementation and earlier measurements](provenance/windows-refresh-validation.json)
 - [Historical ARM64 Linux validation](provenance/validation.json)
